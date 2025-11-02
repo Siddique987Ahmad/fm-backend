@@ -30,33 +30,54 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
-const dbConnection=require('./src/dbConnection/dbConnection')
+const dbConnection = require('./src/dbConnection/dbConnection');
 
-// Connect to database
-dbConnection();
+// Middleware to ensure DB connection before handling requests
+app.use(async (req, res, next) => {
+  try {
+    await dbConnection();
+    next();
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+    });
+  }
+});
 
 // Routes
 app.use('/api/products', productRoutes);
-app.use('/api/expenses', expenseRoutes); // New expense routes
-app.use('/api/reports', reportRoutes); // New report routes
-app.use('/api/admin', adminRoutes); // Admin routes
-
+app.use('/api/expenses', expenseRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Health check route
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Server is running!',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    await dbConnection();
+    res.status(200).json({
+      success: true,
+      message: 'Server is running!',
+      timestamp: new Date().toISOString(),
+      database: 'connected'
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
+  console.error('Error:', err.stack);
+  res.status(err.status || 500).json({
     success: false,
-    message: 'Something went wrong!',
+    message: err.message || 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
 });
@@ -69,11 +90,18 @@ app.use((req, res) => {
   });
 });
 
+// Export for Vercel serverless functions
+module.exports = app;
 
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Only listen if running locally (not in Vercel serverless environment)
+// Vercel will automatically use the exported app
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+} else {
+  console.log('Running in Vercel serverless environment');
+}
 
