@@ -131,19 +131,7 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
-    // Ensure database connection before processing
-    const dbConnection = require('../dbConnection/dbConnection');
-    try {
-      await dbConnection();
-    } catch (dbError) {
-      console.error('Database connection error in login:', dbError);
-      return res.status(503).json({
-        success: false,
-        message: 'Database connection failed. Please try again later.',
-        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
-      });
-    }
-
+    // DB connection is now handled by global middleware, but keep as backup
     const { email, password } = req.body;
 
     // Validate email and password

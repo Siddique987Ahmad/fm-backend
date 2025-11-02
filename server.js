@@ -71,6 +71,28 @@ if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
   });
 }
 
+// Global middleware to ensure DB connection for all API routes (except health checks)
+app.use('/api', async (req, res, next) => {
+  // Skip DB check for health endpoint and root API endpoint
+  if (req.path === '/health' || req.path === '' || req.path === '/') {
+    return next();
+  }
+
+  try {
+    await dbConnection();
+    next();
+  } catch (error) {
+    console.error('Database connection error in middleware:', error);
+    if (!res.headersSent) {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection failed. Please try again later.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+});
+
 // API root route
 app.get('/api', (req, res) => {
   res.status(200).json({
