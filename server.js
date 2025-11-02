@@ -17,7 +17,7 @@ const expenseRoutes = require('./src/routes/expenseRoutes');
 const reportRoutes = require('./src/routes/reportRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 
-// Middleware
+// Middleware - CORS must be first to handle OPTIONS preflight requests
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -41,7 +41,11 @@ app.use(cors({
       callback(null, true); // Allow all origins for now - restrict in production if needed
     }
   },
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -71,10 +75,12 @@ if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
   });
 }
 
-// Global middleware to ensure DB connection for all API routes (except health checks)
+// Global middleware to ensure DB connection for all API routes (except health checks and OPTIONS)
 app.use('/api', async (req, res, next) => {
-  // Skip DB check for health endpoint and root API endpoint
-  if (req.path === '/health' || req.path === '' || req.path === '/') {
+  // Skip DB check for:
+  // 1. Health endpoint and root API endpoint
+  // 2. OPTIONS requests (CORS preflight) - these don't need DB connection
+  if (req.path === '/health' || req.path === '' || req.path === '/' || req.method === 'OPTIONS') {
     return next();
   }
 
