@@ -4,13 +4,38 @@ const fs = require('fs');
 
 class PDFReportService {
   constructor() {
-    this.outputDir = path.join(__dirname, '../../reports');
-    this.ensureOutputDir();
+    // Use /tmp for serverless environments, local reports folder for development
+    if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+      // Serverless environment - use /tmp (writable in serverless)
+      this.outputDir = '/tmp/reports';
+    } else {
+      // Local development
+      this.outputDir = path.join(__dirname, '../../reports');
+    }
+    // Don't create directory in constructor - create it lazily when needed
   }
 
   ensureOutputDir() {
-    if (!fs.existsSync(this.outputDir)) {
-      fs.mkdirSync(this.outputDir, { recursive: true });
+    try {
+      if (!fs.existsSync(this.outputDir)) {
+        fs.mkdirSync(this.outputDir, { recursive: true });
+      }
+    } catch (error) {
+      // If directory creation fails (e.g., in read-only filesystem), use /tmp
+      if (error.code === 'EACCES' || error.code === 'EROFS' || error.code === 'ENOENT') {
+        this.outputDir = '/tmp/reports';
+        try {
+          if (!fs.existsSync(this.outputDir)) {
+            fs.mkdirSync(this.outputDir, { recursive: true });
+          }
+        } catch (tmpError) {
+          console.error('Failed to create reports directory:', tmpError.message);
+          // Continue anyway - the file write will handle the error
+        }
+      } else {
+        console.error('Failed to create reports directory:', error.message);
+        throw error;
+      }
     }
   }
 
@@ -726,6 +751,9 @@ class PDFReportService {
 
   // Generate PDF from HTML
   async generatePDF(html, filename) {
+    // Ensure output directory exists before creating PDF (lazy initialization)
+    this.ensureOutputDir();
+    
     const browser = await puppeteer.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
