@@ -43,8 +43,6 @@ const dbConnection=async()=>{
         cached.promise = mongoose.connect(process.env.MONGO_URI, {
             serverSelectionTimeoutMS: 10000, // 10 second timeout
             maxPoolSize: 10, // Maintain up to 10 socket connections
-            bufferCommands: false, // Disable mongoose buffering
-            bufferMaxEntries: 0, // Disable mongoose buffering
         }).then((connect) => {
             console.log("✅ MongoDB Atlas connected successfully:", connect.connection.name, "on", connect.connection.host);
             cached.conn = connect;
