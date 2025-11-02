@@ -37,6 +37,15 @@ const getUsers = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
+    // Debug: Log connection state and query
+    console.log('🔍 Query Debug:', {
+      connectionState: require('mongoose').connection.readyState,
+      connectionName: require('mongoose').connection.name,
+      filter: filter,
+      page: page,
+      limit: limit
+    });
+
     // Execute query with pagination
     const users = await User.find(filter)
       .populate('role', 'name displayName')
@@ -46,7 +55,10 @@ const getUsers = async (req, res) => {
       .limit(parseInt(limit))
       .select('-password');
 
+    console.log('✅ Users found:', users.length);
+
     const total = await User.countDocuments(filter);
+    console.log('✅ Total users in DB:', total);
 
     res.status(200).json({
       success: true,

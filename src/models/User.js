@@ -108,7 +108,7 @@ const userSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false // Made optional for backward compatibility with imported data
   },
   updatedBy: {
     type: mongoose.Schema.Types.ObjectId,

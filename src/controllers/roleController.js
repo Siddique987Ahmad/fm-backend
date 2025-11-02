@@ -32,6 +32,13 @@ const getRoles = async (req, res) => {
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const sort = { [sortBy]: sortOrder === 'desc' ? -1 : 1 };
 
+    // Debug: Log connection state
+    console.log('🔍 Roles Query Debug:', {
+      connectionState: require('mongoose').connection.readyState,
+      connectionName: require('mongoose').connection.name,
+      filter: filter
+    });
+
     // Execute query with pagination
     const roles = await Role.find(filter)
       .populate('permissions', 'name displayName category action resource')
@@ -40,7 +47,10 @@ const getRoles = async (req, res) => {
       .skip(skip)
       .limit(parseInt(limit));
 
+    console.log('✅ Roles found:', roles.length);
+
     const total = await Role.countDocuments(filter);
+    console.log('✅ Total roles in DB:', total);
 
     res.status(200).json({
       success: true,

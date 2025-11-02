@@ -142,8 +142,18 @@ const loginUser = async (req, res) => {
       });
     }
 
+    // Debug: Log connection state
+    console.log('🔍 Login Debug:', {
+      email: email,
+      connectionState: require('mongoose').connection.readyState,
+      connectionName: require('mongoose').connection.name,
+      dbName: require('mongoose').connection.db?.databaseName
+    });
+
     // Check for user with password field included
     const user = await User.findByEmailWithPassword(email);
+    
+    console.log('✅ User found:', user ? `${user.firstName} ${user.lastName} (${user.email})` : 'NOT FOUND');
 
     if (!user) {
       return res.status(401).json({
