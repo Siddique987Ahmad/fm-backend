@@ -79,11 +79,18 @@ app.use('/api', async (req, res, next) => {
   }
 
   try {
+    // Ensure JSON response header is set early
+    res.setHeader('Content-Type', 'application/json');
+    
     await dbConnection();
     next();
   } catch (error) {
     console.error('Database connection error in middleware:', error);
+    console.error('DB Error stack:', error.stack);
+    
     if (!res.headersSent) {
+      // Set JSON header explicitly
+      res.setHeader('Content-Type', 'application/json');
       return res.status(503).json({
         success: false,
         message: 'Database connection failed. Please try again later.',
@@ -147,19 +154,30 @@ app.get('/api/health', async (req, res) => {
 
 // Error handling middleware (must be before 404 handler)
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack || err.message);
+  console.error('Error in error handler:', err);
+  console.error('Error stack:', err.stack);
   
-  // Ensure JSON response even if headers were partially sent
-  if (!res.headersSent) {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(err.status || 500).json({
-      success: false,
-      message: err.message || 'Something went wrong!',
-      error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-    });
-  } else {
-    // If headers were sent, end the response
-    res.end();
+  // Always try to send JSON, even if headers were partially sent
+  try {
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(err.status || 500).json({
+        success: false,
+        message: err.message || 'Something went wrong!',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
+      });
+    } else {
+      // If headers were sent, try to end gracefully
+      if (!res.finished) {
+        return res.end();
+      }
+    }
+  } catch (handlerError) {
+    console.error('Error in error handler itself:', handlerError);
+    // Last resort - try to end response
+    if (!res.finished) {
+      res.end();
+    }
   }
 });
 

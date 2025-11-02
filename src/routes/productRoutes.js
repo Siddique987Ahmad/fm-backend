@@ -19,6 +19,9 @@ const {
 // @access  Public
 router.get('/types', async (req, res) => {
   try {
+    // Ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
+    
     const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions');
     
     const productTypes = products.map(product => ({
@@ -28,14 +31,16 @@ router.get('/types', async (req, res) => {
       allowedTransactions: product.allowedTransactions || ['sale', 'purchase']
     }));
 
-    res.status(200).json({ success: true, data: productTypes });
+    return res.status(200).json({ success: true, data: productTypes });
   } catch (error) {
     console.error('Error fetching product types:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
   }
 });
 
@@ -49,6 +54,9 @@ router.post('/:productType', createTransaction);
 // @access  Public
 router.get('/:productType/stats', async (req, res) => {
   try {
+    // Ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
+    
     const { productType } = req.params;
     
     // Get all transactions for this product type
@@ -73,7 +81,7 @@ router.get('/:productType/stats', async (req, res) => {
     
     const totalAmount = totalSalesAmount + totalPurchasesAmount;
     
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: {
         productType,
@@ -98,11 +106,13 @@ router.get('/:productType/stats', async (req, res) => {
     
   } catch (error) {
     console.error('Error fetching stats:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
   }
 });
 

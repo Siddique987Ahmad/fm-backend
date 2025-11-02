@@ -74,6 +74,8 @@ const createTransaction = async (req, res) => {
 // @access  Public
 const getAllTransactions = async (req, res) => {
   try {
+    // Ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
     const { productType } = req.params; // Get product type from URL
     const {
       page = 1,
@@ -145,11 +147,14 @@ const getAllTransactions = async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
+    console.error('Error stack:', error.stack);
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
   }
 };
 

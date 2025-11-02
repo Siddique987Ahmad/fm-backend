@@ -273,21 +273,49 @@ const logoutUser = async (req, res) => {
 // @access  Private
 const getMe = async (req, res) => {
   try {
+    // Ensure JSON response
+    res.setHeader('Content-Type', 'application/json');
+    
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated'
+      });
+    }
+
     const user = await User.findById(req.user._id)
-      .populate('role', 'name displayName permissions')
+      .populate({
+        path: 'role',
+        select: 'name displayName description color priority isActive isSystemRole',
+        populate: {
+          path: 'permissions',
+          select: 'name displayName category action resource isActive'
+        }
+      })
       .select('-password');
 
-    res.status(200).json({
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       data: user
     });
   } catch (error) {
     console.error('Error getting current user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
+    console.error('Error stack:', error.stack);
+    
+    if (!res.headersSent) {
+      return res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
   }
 };
 
