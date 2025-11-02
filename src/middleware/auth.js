@@ -89,6 +89,22 @@ const protect = async (req, res, next) => {
       });
     }
 
+    // If role population failed, try to populate it manually
+    if (user.role && typeof user.role === 'object' && !user.role.name) {
+      // Role might be an ObjectId - try to populate manually
+      try {
+        const roleId = user.role._id || user.role;
+        const role = await Role.findById(roleId).populate('permissions');
+        if (role) {
+          user.role = role;
+        } else {
+          console.error(`⚠️  Warning: User ${user.email} has role ID ${roleId} but role not found in database`);
+        }
+      } catch (popError) {
+        console.error('Error manually populating role:', popError);
+      }
+    }
+
     // Update last login
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
@@ -96,6 +112,7 @@ const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.error('Error in protect middleware:', error);
     return res.status(401).json({
       success: false,
       message: 'Not authorized to access this route'
@@ -105,15 +122,43 @@ const protect = async (req, res, next) => {
 
 // Grant access to specific roles
 const authorize = (...roles) => {
-  return (req, res, next) => {
-    if (!req.user || !req.user.role) {
+  return async (req, res, next) => {
+    if (!req.user) {
       return res.status(401).json({
         success: false,
-        message: 'User role not found'
+        message: 'User not authenticated'
       });
     }
 
-    const userRole = req.user.role.name || req.user.role;
+    // If role is not populated or is just an ObjectId, populate it
+    let userRole = null;
+    if (req.user.role) {
+      if (typeof req.user.role === 'object' && req.user.role.name) {
+        // Role is already populated
+        userRole = req.user.role.name;
+      } else {
+        // Role is an ObjectId or null - try to fetch it
+        try {
+          const roleId = req.user.role._id || req.user.role;
+          if (roleId) {
+            const role = await Role.findById(roleId);
+            if (role) {
+              userRole = role.name;
+              req.user.role = role; // Update for future use
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching role in authorize middleware:', error);
+        }
+      }
+    }
+
+    if (!userRole) {
+      return res.status(401).json({
+        success: false,
+        message: 'User role not found. Please contact administrator.'
+      });
+    }
     
     if (!roles.includes(userRole)) {
       return res.status(403).json({
@@ -130,11 +175,32 @@ const authorize = (...roles) => {
 const checkPermission = (permissionName) => {
   return async (req, res, next) => {
     try {
-      if (!req.user || !req.user.role) {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not authenticated'
+        });
+      }
+
+      // Ensure role is populated
+      let role = req.user.role;
+      if (!role) {
         return res.status(401).json({
           success: false,
           message: 'User role not found'
         });
+      }
+
+      // If role is an ObjectId, populate it
+      if (typeof role === 'object' && !role.name && role._id) {
+        role = await Role.findById(role._id).populate('permissions', 'name displayName');
+        if (!role) {
+          return res.status(401).json({
+            success: false,
+            message: 'User role not found'
+          });
+        }
+        req.user.role = role; // Update for future use
       }
 
       // If role is populated, check permissions

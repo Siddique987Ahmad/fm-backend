@@ -14,11 +14,21 @@ const dbConnection=async()=>{
             throw new Error('MONGO_URI environment variable is not set');
         }
 
-        // If already connected, reuse the connection
+        // If already connected, check if it's to the correct database
         if (cached.conn) {
             // Check if connection is still alive
             if (mongoose.connection.readyState === 1) {
-                return cached.conn;
+                // Verify we're connected to the correct database
+                const currentDbName = mongoose.connection.name;
+                if (currentDbName === 'factory-management') {
+                    return cached.conn;
+                } else {
+                    // Connected to wrong database - disconnect and reconnect
+                    console.warn(`⚠️  Currently connected to '${currentDbName}' database. Reconnecting to 'factory-management'...`);
+                    await mongoose.disconnect();
+                    cached.conn = null;
+                    cached.promise = null;
+                }
             } else {
                 // Connection is dead, reset cache
                 cached.conn = null;
