@@ -186,17 +186,34 @@ const loginUser = async (req, res) => {
     }
 
     // Populate role for response
-    await user.populate('role', 'name displayName permissions');
+    try {
+      await user.populate({
+        path: 'role',
+        select: 'name displayName description color priority isActive isSystemRole',
+        populate: {
+          path: 'permissions',
+          select: 'name displayName category action resource isActive'
+        }
+      });
+    } catch (populateError) {
+      console.error('Error populating role:', populateError);
+      // Continue without populated permissions if it fails
+      await user.populate('role', 'name displayName');
+    }
 
     sendTokenResponse(user, 200, res);
 
   } catch (error) {
     console.error('Error logging in user:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server Error',
-      error: error.message
-    });
+    
+    // Ensure we always return JSON, even on errors
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      });
+    }
   }
 };
 
