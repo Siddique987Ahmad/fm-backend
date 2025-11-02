@@ -131,6 +131,19 @@ const registerUser = async (req, res) => {
 // @access  Public
 const loginUser = async (req, res) => {
   try {
+    // Ensure database connection before processing
+    const dbConnection = require('../dbConnection/dbConnection');
+    try {
+      await dbConnection();
+    } catch (dbError) {
+      console.error('Database connection error in login:', dbError);
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection failed. Please try again later.',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
+
     const { email, password } = req.body;
 
     // Validate email and password
@@ -187,24 +200,43 @@ const loginUser = async (req, res) => {
 
     // Populate role for response
     try {
-      await user.populate({
-        path: 'role',
-        select: 'name displayName description color priority isActive isSystemRole',
-        populate: {
-          path: 'permissions',
-          select: 'name displayName category action resource isActive'
+      // First try to populate with nested permissions
+      if (user.role) {
+        try {
+          await user.populate({
+            path: 'role',
+            select: 'name displayName description color priority isActive isSystemRole',
+            populate: {
+              path: 'permissions',
+              select: 'name displayName category action resource isActive'
+            }
+          });
+        } catch (populateError) {
+          console.error('Error populating role with permissions:', populateError);
+          // Fallback: try simple populate without permissions
+          try {
+            await user.populate('role', 'name displayName');
+          } catch (simplePopulateError) {
+            console.error('Error with simple populate:', simplePopulateError);
+            // If populate fails entirely, fetch role manually
+            const Role = require('../models/Role');
+            const role = await Role.findById(user.role).select('name displayName').lean();
+            if (role) {
+              user.role = role;
+            }
+          }
         }
-      });
+      }
     } catch (populateError) {
-      console.error('Error populating role:', populateError);
-      // Continue without populated permissions if it fails
-      await user.populate('role', 'name displayName');
+      console.error('Unexpected error during role population:', populateError);
+      // Continue anyway - sendTokenResponse can handle missing role
     }
 
     sendTokenResponse(user, 200, res);
 
   } catch (error) {
     console.error('Error logging in user:', error);
+    console.error('Error stack:', error.stack);
     
     // Ensure we always return JSON, even on errors
     if (!res.headersSent) {
@@ -213,6 +245,13 @@ const loginUser = async (req, res) => {
         message: 'Server Error',
         error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       });
+    } else {
+      // If headers were sent, try to end the response gracefully
+      try {
+        res.end();
+      } catch (endError) {
+        console.error('Error ending response:', endError);
+      }
     }
   }
 };

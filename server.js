@@ -71,6 +71,23 @@ if (process.env.NODE_ENV === 'production' || process.env.VERCEL) {
   });
 }
 
+// API root route
+app.get('/api', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Factory Management System API',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/admin/auth/login',
+      products: '/api/products',
+      expenses: '/api/expenses',
+      reports: '/api/reports',
+      admin: '/api/admin',
+      health: '/api/health'
+    }
+  });
+});
+
 // Routes
 app.use('/api/products', productRoutes);
 app.use('/api/expenses', expenseRoutes);
