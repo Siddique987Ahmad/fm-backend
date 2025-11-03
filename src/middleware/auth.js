@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Role = require('../models/Role');
 
@@ -89,20 +90,56 @@ const protect = async (req, res, next) => {
       });
     }
 
-    // If role population failed, try to populate it manually
-    if (user.role && typeof user.role === 'object' && !user.role.name) {
-      // Role might be an ObjectId - try to populate manually
-      try {
-        const roleId = user.role._id || user.role;
-        const role = await Role.findById(roleId).populate('permissions');
-        if (role) {
-          user.role = role;
-        } else {
-          console.error(`⚠️  Warning: User ${user.email} has role ID ${roleId} but role not found in database`);
+    // If role population failed or role is null/undefined, try to populate it manually
+    if (!user.role) {
+      console.error(`⚠️  ERROR: User ${user.email} (ID: ${user._id}) has no role assigned!`);
+      return res.status(401).json({
+        success: false,
+        message: 'User role not found. Please contact administrator to assign a role.'
+      });
+    }
+
+    // Check if role is an ObjectId (not populated) - ObjectId instances don't have 'name' property
+    // If role is populated, it will be an object with 'name' property
+    const isObjectId = user.role.constructor.name === 'ObjectId' || 
+                       (typeof user.role === 'object' && !user.role.name && mongoose.Types.ObjectId.isValid(user.role));
+    
+    if (isObjectId || !user.role.name) {
+      // Role is not populated - fetch it manually
+      const roleId = user.role._id || user.role;
+      if (roleId) {
+        try {
+          const role = await Role.findById(roleId).populate('permissions');
+          if (role) {
+            user.role = role;
+            console.log(`✅ Successfully populated role '${role.name}' for user ${user.email} (database: ${mongoose.connection.name})`);
+          } else {
+            console.error(`❌ ERROR: User ${user.email} has role ID ${roleId} but role not found in database '${mongoose.connection.name}'`);
+            return res.status(401).json({
+              success: false,
+              message: 'User role not found in database. Please contact administrator.',
+              debug: process.env.NODE_ENV === 'development' ? `Role ID: ${roleId}, Database: ${mongoose.connection.name}` : undefined
+            });
+          }
+        } catch (popError) {
+          console.error('❌ Error manually populating role:', popError);
+          console.error('Role ID:', roleId);
+          console.error('Database:', mongoose.connection.name);
+          return res.status(401).json({
+            success: false,
+            message: 'Error loading user role. Please try again or contact administrator.'
+          });
         }
-      } catch (popError) {
-        console.error('Error manually populating role:', popError);
+      } else {
+        console.error(`❌ ERROR: User ${user.email} has invalid role reference`);
+        return res.status(401).json({
+          success: false,
+          message: 'User role configuration is invalid. Please contact administrator.'
+        });
       }
+    } else if (user.role && typeof user.role === 'object' && user.role.name) {
+      // Role is properly populated - log for debugging
+      console.log(`✅ User ${user.email} authenticated with role '${user.role.name}' (database: ${mongoose.connection.name})`);
     }
 
     // Update last login
@@ -185,22 +222,41 @@ const checkPermission = (permissionName) => {
       // Ensure role is populated
       let role = req.user.role;
       if (!role) {
+        console.error(`❌ ERROR in checkPermission: User ${req.user.email} has no role`);
         return res.status(401).json({
           success: false,
-          message: 'User role not found'
+          message: 'User role not found. Please contact administrator.'
         });
       }
 
-      // If role is an ObjectId, populate it
-      if (typeof role === 'object' && !role.name && role._id) {
-        role = await Role.findById(role._id).populate('permissions', 'name displayName');
-        if (!role) {
+      // If role is an ObjectId or not fully populated, fetch it
+      if (!role.name) {
+        const roleId = role._id || role;
+        if (roleId) {
+          try {
+            role = await Role.findById(roleId).populate('permissions', 'name displayName');
+            if (!role) {
+              console.error(`❌ ERROR: Role ID ${roleId} not found in database '${mongoose.connection.name}' for user ${req.user.email}`);
+              return res.status(401).json({
+                success: false,
+                message: 'User role not found in database. Please contact administrator.'
+              });
+            }
+            req.user.role = role; // Update for future use
+          } catch (error) {
+            console.error(`❌ Error fetching role ${roleId} in checkPermission:`, error);
+            return res.status(401).json({
+              success: false,
+              message: 'Error loading user role. Please try again.'
+            });
+          }
+        } else {
+          console.error(`❌ ERROR: Invalid role reference for user ${req.user.email}`);
           return res.status(401).json({
             success: false,
-            message: 'User role not found'
+            message: 'User role configuration is invalid. Please contact administrator.'
           });
         }
-        req.user.role = role; // Update for future use
       }
 
       // If role is populated, check permissions

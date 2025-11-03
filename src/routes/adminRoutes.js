@@ -97,6 +97,72 @@ router.get('/users',
   getUsers
 );
 
+// Diagnostic endpoint to check database and roles (for debugging)
+// @route   GET /api/admin/diagnostic
+// @desc    Check database connection and role data
+// @access  Private (Admin)
+router.get('/diagnostic', protect, async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const User = require('../models/User');
+    const Role = require('../models/Role');
+    
+    const dbInfo = {
+      connected: mongoose.connection.readyState === 1,
+      databaseName: mongoose.connection.name,
+      host: mongoose.connection.host,
+      user: req.user ? {
+        id: req.user._id,
+        email: req.user.email,
+        hasRole: !!req.user.role,
+        roleType: req.user.role ? (typeof req.user.role === 'object' && req.user.role.name ? 'populated' : 'ObjectId') : 'null',
+        roleName: req.user.role && req.user.role.name ? req.user.role.name : (req.user.role ? req.user.role.toString() : 'none')
+      } : null
+    };
+
+    // Count collections
+    const totalUsers = await User.countDocuments();
+    const totalRoles = await Role.countDocuments();
+    
+    // Check if current user's role exists
+    let userRoleCheck = null;
+    if (req.user && req.user.role) {
+      const roleId = req.user.role._id || req.user.role;
+      if (roleId) {
+        const role = await Role.findById(roleId);
+        userRoleCheck = {
+          roleId: roleId.toString(),
+          exists: !!role,
+          roleName: role ? role.name : null
+        };
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        database: dbInfo,
+        counts: {
+          totalUsers,
+          totalRoles
+        },
+        userRoleCheck,
+        environment: {
+          nodeEnv: process.env.NODE_ENV,
+          vercel: !!process.env.VERCEL
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error in diagnostic endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Diagnostic error',
+      error: error.message
+    });
+  }
+});
+
 // @route   GET /api/admin/users/stats
 // @desc    Get user statistics
 // @access  Private (Admin/Manager)
