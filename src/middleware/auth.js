@@ -65,12 +65,14 @@ const protect = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
 
-    // Get user from token
+    // Get user from token with fresh role and permissions data
     const user = await User.findById(decoded.userId)
       .populate({
         path: 'role',
+        select: 'name displayName description color priority isActive isSystemRole',
         populate: {
-          path: 'permissions'
+          path: 'permissions',
+          select: 'name displayName category action resource isActive'
         }
       })
       .select('+lastLogin');
@@ -259,34 +261,65 @@ const checkPermission = (permissionName) => {
         }
       }
 
-      // If role is populated, check permissions
-      if (req.user.role.permissions) {
-        const hasPermission = req.user.role.permissions.some(permission => 
-          permission.name === permissionName || permission._id.toString() === permissionName
-        );
-
-        if (!hasPermission) {
-          return res.status(403).json({
-            success: false,
-            message: `Permission '${permissionName}' is required to access this route`
-          });
-        }
-      } else {
-        // If role is not populated, fetch it
-        const role = await Role.findById(req.user.role)
-          .populate('permissions', 'name displayName');
-        
-        const hasPermission = role.permissions.some(permission => 
-          permission.name === permissionName
-        );
-
-        if (!hasPermission) {
-          return res.status(403).json({
-            success: false,
-            message: `Permission '${permissionName}' is required to access this route`
-          });
-        }
+      // Always fetch fresh permissions from database to ensure we have the latest data
+      // This is important because permissions might have been updated after user logged in
+      const roleId = req.user.role._id || req.user.role;
+      if (!roleId) {
+        console.error(`❌ ERROR: Cannot fetch permissions - invalid role ID for user ${req.user.email}`);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid role configuration. Please contact administrator.'
+        });
       }
+
+      // Fetch fresh role with permissions from database
+      const freshRole = await Role.findById(roleId)
+        .populate('permissions', 'name displayName category action resource isActive');
+      
+      if (!freshRole) {
+        console.error(`❌ ERROR: Role ${roleId} not found in database for user ${req.user.email}`);
+        return res.status(401).json({
+          success: false,
+          message: 'User role not found in database. Please contact administrator.'
+        });
+      }
+
+      // Update req.user.role with fresh data
+      req.user.role = freshRole;
+      const permissionsArray = freshRole.permissions || [];
+
+      // Check if role has any permissions
+      if (!permissionsArray || permissionsArray.length === 0) {
+        console.error(`❌ Role ${freshRole.name} has no permissions assigned for user ${req.user.email}`);
+        return res.status(403).json({
+          success: false,
+          message: `Your role '${freshRole.name}' has no permissions assigned. Please contact administrator.`
+        });
+      }
+
+      // Check if user has the required permission
+      const hasPermission = permissionsArray.some(permission => {
+        // Check by permission name
+        if (permission.name === permissionName) {
+          return true;
+        }
+        // Also check by ID (for backward compatibility)
+        const permId = permission._id ? permission._id.toString() : permission.toString();
+        return permId === permissionName;
+      });
+
+      if (!hasPermission) {
+        const availablePermissions = permissionsArray.map(p => p.name || p._id?.toString() || p.toString()).join(', ');
+        console.log(`❌ Permission check failed: User ${req.user.email} (role: ${freshRole.name}) does not have permission '${permissionName}'`);
+        console.log(`   Available permissions: [${availablePermissions}]`);
+        console.log(`   Required permission: '${permissionName}'`);
+        return res.status(403).json({
+          success: false,
+          message: `Permission '${permissionName}' is required to access this route. Your role '${freshRole.name}' does not have this permission.`
+        });
+      }
+      
+      console.log(`✅ Permission check passed: User ${req.user.email} (role: ${freshRole.name}) has permission '${permissionName}'`);
 
       next();
     } catch (error) {
