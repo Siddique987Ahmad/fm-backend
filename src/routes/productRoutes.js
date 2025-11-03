@@ -14,10 +14,13 @@ const {
 
 } = require('../controllers/productController');
 
+// Import authentication middleware
+const { protect, checkPermission } = require('../middleware/auth');
+
 // @route   GET /api/products/types
 // @desc    Get all product types for user interface
-// @access  Public
-router.get('/types', async (req, res) => {
+// @access  Private (read_product permission required)
+router.get('/types', protect, checkPermission('read_product'), async (req, res) => {
   try {
     // Ensure JSON response
     res.setHeader('Content-Type', 'application/json');
@@ -46,13 +49,13 @@ router.get('/types', async (req, res) => {
 
 // @route   POST /api/products/:productType
 // @desc    Create new product transaction
-// @access  Public
-router.post('/:productType', createTransaction);
+// @access  Private (create_product permission required)
+router.post('/:productType', protect, checkPermission('create_product'), createTransaction);
 
 // @route   GET /api/products/:productType/stats
 // @desc    Get transaction statistics for specific product
-// @access  Public
-router.get('/:productType/stats', async (req, res) => {
+// @access  Private (read_product permission required)
+router.get('/:productType/stats', protect, checkPermission('read_product'), async (req, res) => {
   try {
     // Ensure JSON response
     res.setHeader('Content-Type', 'application/json');
@@ -118,22 +121,22 @@ router.get('/:productType/stats', async (req, res) => {
 
 // @route   GET /api/products/:productType
 // @desc    Get all product transactions with pagination and filtering
-// @access  Public
-router.get('/:productType', getAllTransactions);
+// @access  Private (read_product permission required)
+router.get('/:productType', protect, checkPermission('read_product'), getAllTransactions);
 
 // @route   GET /api/products/:productType/:id
 // @desc    Get single product transaction by ID
-// @access  Public
-router.get('/:productType/:id', getTransactionById);
+// @access  Private (read_product permission required)
+router.get('/:productType/:id', protect, checkPermission('read_product'), getTransactionById);
 
 // @route   PUT /api/products/:productType/:id
 // @desc    Update product transaction
-// @access  Public
-router.put('/:productType/:id', updateTransaction);
+// @access  Private (update_product permission required)
+router.put('/:productType/:id', protect, checkPermission('update_product'), updateTransaction);
 
 // @route   DELETE /api/products/:productType/:id
 // @desc    Delete product transaction
-// @access  Public
-router.delete('/:productType/:id', deleteTransaction);
+// @access  Private (delete_product permission required)
+router.delete('/:productType/:id', protect, checkPermission('delete_product'), deleteTransaction);
 
 module.exports = router;

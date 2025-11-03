@@ -13,31 +13,34 @@ const {
   deleteReport
 } = require('../controllers/reportController');
 
+// Import authentication middleware
+const { protect, checkPermission } = require('../middleware/auth');
+
 // ===============================================
 // PDF REPORT ROUTES
 // ===============================================
 
 // @route   GET /api/reports/expenses/pdf
 // @desc    Generate expense report PDF
-// @access  Public
+// @access  Private (read_expense permission required)
 // @query   category, startDate, endDate, paymentStatus, download
-router.get('/expenses/pdf', generateExpenseReport);
+router.get('/expenses/pdf', protect, checkPermission('read_expense'), generateExpenseReport);
 
 // @route   GET /api/reports/products/:productType/pdf
 // @desc    Generate product report PDF
-// @access  Public
+// @access  Private (read_product permission required)
 // @query   transactionType, clientName, paymentStatus, startDate, endDate, download
-router.get('/products/:productType/pdf', generateProductReport);
+router.get('/products/:productType/pdf', protect, checkPermission('read_product'), generateProductReport);
 
 // @route   GET /api/reports/files
 // @desc    Get list of available report files
-// @access  Public
-router.get('/files', getAvailableReports);
+// @access  Private (read_product or read_expense permission required)
+router.get('/files', protect, checkPermission('read_product'), getAvailableReports);
 
 // @route   DELETE /api/reports/files/:filename
 // @desc    Delete a report file
-// @access  Public
-router.delete('/files/:filename', deleteReport);
+// @access  Private (delete_product or delete_expense permission required)
+router.delete('/files/:filename', protect, checkPermission('delete_product'), deleteReport);
 
 // ===============================================
 // BULK ACTION ROUTES FOR EXPENSES
@@ -45,52 +48,52 @@ router.delete('/files/:filename', deleteReport);
 
 // @route   POST /api/reports/expenses/bulk/approve
 // @desc    Bulk approve/reject expenses
-// @access  Public
+// @access  Private (update_expense permission required)
 // @body    { expenseIds: [], approvalStatus: 'approved'|'rejected'|'pending', notes?: '' }
-router.post('/expenses/bulk/approve', bulkApproveExpenses);
+router.post('/expenses/bulk/approve', protect, checkPermission('update_expense'), bulkApproveExpenses);
 
 // @route   POST /api/reports/expenses/bulk/status
 // @desc    Bulk update expense status and payment status
-// @access  Public
+// @access  Private (update_expense permission required)
 // @body    { expenseIds: [], status?: 'active'|'cancelled'|'completed', paymentStatus?: 'paid'|'pending'|'advance' }
-router.post('/expenses/bulk/status', bulkUpdateExpenseStatus);
+router.post('/expenses/bulk/status', protect, checkPermission('update_expense'), bulkUpdateExpenseStatus);
 
 // @route   DELETE /api/reports/expenses/bulk
 // @desc    Bulk delete expenses
-// @access  Public
+// @access  Private (delete_expense permission required)
 // @body    { expenseIds: [] }
-router.delete('/expenses/bulk', bulkDeleteExpenses);
+router.delete('/expenses/bulk', protect, checkPermission('delete_expense'), bulkDeleteExpenses);
 
 // ===============================================
 // CATEGORY-SPECIFIC REPORT ROUTES
 // ===============================================
 
 // Home expense reports
-router.get('/expenses/home/pdf', (req, res) => {
+router.get('/expenses/home/pdf', protect, checkPermission('read_expense'), (req, res) => {
   req.query.category = 'home';
   generateExpenseReport(req, res);
 });
 
 // Labour expense reports
-router.get('/expenses/labour/pdf', (req, res) => {
+router.get('/expenses/labour/pdf', protect, checkPermission('read_expense'), (req, res) => {
   req.query.category = 'labour';
   generateExpenseReport(req, res);
 });
 
 // Factory expense reports
-router.get('/expenses/factory/pdf', (req, res) => {
+router.get('/expenses/factory/pdf', protect, checkPermission('read_expense'), (req, res) => {
   req.query.category = 'factory';
   generateExpenseReport(req, res);
 });
 
 // Zakat expense reports
-router.get('/expenses/zakat/pdf', (req, res) => {
+router.get('/expenses/zakat/pdf', protect, checkPermission('read_expense'), (req, res) => {
   req.query.category = 'zakat';
   generateExpenseReport(req, res);
 });
 
 // Personal expense reports
-router.get('/expenses/personal/pdf', (req, res) => {
+router.get('/expenses/personal/pdf', protect, checkPermission('read_expense'), (req, res) => {
   req.query.category = 'personal';
   generateExpenseReport(req, res);
 });
@@ -100,49 +103,49 @@ router.get('/expenses/personal/pdf', (req, res) => {
 // ===============================================
 
 // White Oil reports
-router.get('/products/white-oil/pdf', (req, res) => {
+router.get('/products/white-oil/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'white-oil';
   generateProductReport(req, res);
 });
 
 // Yellow Oil reports
-router.get('/products/yellow-oil/pdf', (req, res) => {
+router.get('/products/yellow-oil/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'yellow-oil';
   generateProductReport(req, res);
 });
 
 // Crude Oil reports
-router.get('/products/crude-oil/pdf', (req, res) => {
+router.get('/products/crude-oil/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'crude-oil';
   generateProductReport(req, res);
 });
 
 // Diesel reports
-router.get('/products/diesel/pdf', (req, res) => {
+router.get('/products/diesel/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'diesel';
   generateProductReport(req, res);
 });
 
 // Petrol reports
-router.get('/products/petrol/pdf', (req, res) => {
+router.get('/products/petrol/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'petrol';
   generateProductReport(req, res);
 });
 
 // Kerosene reports
-router.get('/products/kerosene/pdf', (req, res) => {
+router.get('/products/kerosene/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'kerosene';
   generateProductReport(req, res);
 });
 
 // LPG reports
-router.get('/products/lpg/pdf', (req, res) => {
+router.get('/products/lpg/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'lpg';
   generateProductReport(req, res);
 });
 
 // Natural Gas reports
-router.get('/products/natural-gas/pdf', (req, res) => {
+router.get('/products/natural-gas/pdf', protect, checkPermission('read_product'), (req, res) => {
   req.params.productType = 'natural-gas';
   generateProductReport(req, res);
 });
@@ -153,8 +156,8 @@ router.get('/products/natural-gas/pdf', (req, res) => {
 
 // @route   GET /api/reports/expenses/summary
 // @desc    Get expense summary for reports
-// @access  Public
-router.get('/expenses/summary', async (req, res) => {
+// @access  Private (read_expense permission required)
+router.get('/expenses/summary', protect, checkPermission('read_expense'), async (req, res) => {
   try {
     const Expense = require('../models/Expense');
     const { category, startDate, endDate } = req.query;
@@ -207,8 +210,8 @@ router.get('/expenses/summary', async (req, res) => {
 
 // @route   GET /api/reports/products/:productType/summary
 // @desc    Get product summary for reports
-// @access  Public
-router.get('/products/:productType/summary', async (req, res) => {
+// @access  Private (read_product permission required)
+router.get('/products/:productType/summary', protect, checkPermission('read_product'), async (req, res) => {
   try {
     const Product = require('../models/Product');
     const { productType } = req.params;

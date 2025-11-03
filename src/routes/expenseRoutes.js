@@ -23,11 +23,11 @@ const { protect, checkPermission } = require('../middleware/auth');
 
 // Get all expenses (overview with filters)
 // GET /api/expenses
-router.get('/', protect, getAllExpenses);
+router.get('/', protect, checkPermission('read_expense'), getAllExpenses);
 
 // Get expense statistics
 // GET /api/expenses/stats
-router.get('/stats', protect, getExpenseStats);
+router.get('/stats', protect, checkPermission('read_expense'), getExpenseStats);
 
 // Create new expense
 // POST /api/expenses
@@ -35,11 +35,11 @@ router.post('/', protect, checkPermission('create_expense'), createExpense);
 
 // Get expenses by category
 // GET /api/expenses/category/:category
-router.get('/category/:category', protect, getExpensesByCategory);
+router.get('/category/:category', protect, checkPermission('read_expense'), getExpensesByCategory);
 
 // Get expense by ID
 // GET /api/expenses/:id
-router.get('/:id', protect, getExpenseById);
+router.get('/:id', protect, checkPermission('read_expense'), getExpenseById);
 
 // Update expense
 // PUT /api/expenses/:id
@@ -58,7 +58,7 @@ router.delete('/:id', protect, checkPermission('delete_expense'), deleteExpense)
 // ===============================================
 
 // Home expenses
-router.get('/home', protect, (req, res) => {
+router.get('/home', protect, checkPermission('read_expense'), (req, res) => {
   req.params.category = 'home';
   getExpensesByCategory(req, res);
 });
@@ -69,7 +69,7 @@ router.post('/home', protect, checkPermission('create_expense'), (req, res) => {
 });
 
 // Labour expenses
-router.get('/labour', protect, (req, res) => {
+router.get('/labour', protect, checkPermission('read_expense'), (req, res) => {
   req.params.category = 'labour';
   getExpensesByCategory(req, res);
 });
@@ -80,7 +80,7 @@ router.post('/labour', protect, checkPermission('create_expense'), (req, res) =>
 });
 
 // Factory expenses
-router.get('/factory', protect, (req, res) => {
+router.get('/factory', protect, checkPermission('read_expense'), (req, res) => {
   req.params.category = 'factory';
   getExpensesByCategory(req, res);
 });
@@ -91,7 +91,7 @@ router.post('/factory', protect, checkPermission('create_expense'), (req, res) =
 });
 
 // Zakat expenses
-router.get('/zakat', protect, (req, res) => {
+router.get('/zakat', protect, checkPermission('read_expense'), (req, res) => {
   req.params.category = 'zakat';
   getExpensesByCategory(req, res);
 });
@@ -102,7 +102,7 @@ router.post('/zakat', protect, checkPermission('create_expense'), (req, res) => 
 });
 
 // Personal expenses
-router.get('/personal', protect, (req, res) => {
+router.get('/personal', protect, checkPermission('read_expense'), (req, res) => {
   req.params.category = 'personal';
   getExpensesByCategory(req, res);
 });
