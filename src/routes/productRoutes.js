@@ -17,6 +17,9 @@ const {
 // Import authentication middleware
 const { protect, checkPermission } = require('../middleware/auth');
 
+// IMPORTANT: Routes must be ordered from most specific to least specific
+// So '/types' and '/:productType/stats' must come BEFORE '/:productType'
+
 // @route   GET /api/products/types
 // @desc    Get all product types for user interface
 // @access  Private (read_product permission required)
@@ -47,14 +50,10 @@ router.get('/types', protect, checkPermission('read_product'), async (req, res) 
   }
 });
 
-// @route   POST /api/products/:productType
-// @desc    Create new product transaction
-// @access  Private (create_product permission required)
-router.post('/:productType', protect, checkPermission('create_product'), createTransaction);
-
 // @route   GET /api/products/:productType/stats
 // @desc    Get transaction statistics for specific product
 // @access  Private (read_product permission required)
+// NOTE: This must come BEFORE /:productType route to avoid route matching conflicts
 router.get('/:productType/stats', protect, checkPermission('read_product'), async (req, res) => {
   try {
     // Ensure JSON response
@@ -118,6 +117,11 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
     }
   }
 });
+
+// @route   POST /api/products/:productType
+// @desc    Create new product transaction
+// @access  Private (create_product permission required)
+router.post('/:productType', protect, checkPermission('create_product'), createTransaction);
 
 // @route   GET /api/products/:productType
 // @desc    Get all product transactions with pagination and filtering

@@ -148,6 +148,14 @@ const protect = async (req, res, next) => {
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
+    // Log authentication success for debugging
+    console.log(`✅ User authenticated: ${user.email} (ID: ${user._id})`);
+    console.log(`   Role: ${user.role?.name || user.role?._id || 'NO ROLE'}`);
+    console.log(`   Role type: ${typeof user.role === 'object' && user.role.name ? 'populated' : 'ObjectId'}`);
+    if (user.role && user.role.permissions) {
+      console.log(`   Permissions count: ${user.role.permissions.length}`);
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -214,12 +222,19 @@ const authorize = (...roles) => {
 const checkPermission = (permissionName) => {
   return async (req, res, next) => {
     try {
+      // Debug logging
+      console.log(`🔍 checkPermission called for route: ${req.method} ${req.path}`);
+      console.log(`   Required permission: '${permissionName}'`);
+      
       if (!req.user) {
+        console.log(`❌ No user found in request for ${req.path}`);
         return res.status(401).json({
           success: false,
           message: 'User not authenticated'
         });
       }
+      
+      console.log(`👤 User: ${req.user.email} (ID: ${req.user._id})`);
 
       // Ensure role is populated
       let role = req.user.role;
@@ -310,22 +325,29 @@ const checkPermission = (permissionName) => {
 
       if (!hasPermission) {
         const availablePermissions = permissionsArray.map(p => p.name || p._id?.toString() || p.toString()).join(', ');
-        console.log(`❌ Permission check failed: User ${req.user.email} (role: ${freshRole.name}) does not have permission '${permissionName}'`);
+        console.log(`❌ Permission check FAILED: User ${req.user.email} (role: ${freshRole.name}) does not have permission '${permissionName}'`);
+        console.log(`   Request: ${req.method} ${req.path}`);
         console.log(`   Available permissions: [${availablePermissions}]`);
         console.log(`   Required permission: '${permissionName}'`);
+        console.log(`   Blocking request with 403 Forbidden`);
         return res.status(403).json({
           success: false,
-          message: `Permission '${permissionName}' is required to access this route. Your role '${freshRole.name}' does not have this permission.`
+          message: `Permission '${permissionName}' is required to access this route. Your role '${freshRole.name}' does not have this permission.`,
+          availablePermissions: permissionsArray.map(p => p.name)
         });
       }
       
-      console.log(`✅ Permission check passed: User ${req.user.email} (role: ${freshRole.name}) has permission '${permissionName}'`);
+      console.log(`✅ Permission check PASSED: User ${req.user.email} (role: ${freshRole.name}) has permission '${permissionName}'`);
+      console.log(`   Allowing request: ${req.method} ${req.path}`);
 
       next();
     } catch (error) {
+      console.error(`❌ Error in checkPermission middleware for ${req.method} ${req.path}:`, error);
+      console.error('Error stack:', error.stack);
       return res.status(500).json({
         success: false,
-        message: 'Error checking permissions'
+        message: 'Error checking permissions',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   };
