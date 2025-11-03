@@ -222,7 +222,9 @@ const updateRole = async (req, res) => {
       isActive
     } = req.body;
 
-    const role = await Role.findById(req.params.id);
+    // Fetch role with permissions populated for comparison
+    const role = await Role.findById(req.params.id)
+      .populate('permissions', '_id');
 
     if (!role) {
       return res.status(404).json({
@@ -231,12 +233,24 @@ const updateRole = async (req, res) => {
       });
     }
 
-    // Prevent modification of system roles
-    if (role.isSystemRole && (permissions || isActive === false)) {
-      return res.status(400).json({
-        success: false,
-        message: 'System roles cannot be modified'
-      });
+    // Prevent certain modifications of system roles
+    if (role.isSystemRole) {
+      // Block if trying to deactivate a system role
+      if (isActive === false && role.isActive === true) {
+        return res.status(400).json({
+          success: false,
+          message: 'System roles cannot be deactivated'
+        });
+      }
+      
+      // Allow updates to displayName, description, color, priority, and permissions for system roles
+      // But prevent changing name, isSystemRole, or creation metadata
+      delete req.body.name; // Cannot change name
+      delete req.body.isSystemRole; // Cannot change system role flag
+      delete req.body.createdBy; // Cannot change creator
+      delete req.body.createdAt; // Cannot change creation date
+      
+      // Note: Permissions CAN be updated for system roles by admins
     }
 
     // Validate permissions if provided
