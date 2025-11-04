@@ -941,6 +941,7 @@ class PDFService {
     let browser;
     let page;
     try {
+      console.log('📄 PDFService: Starting PDF generation...');
       browser = await this.initBrowser();
       page = await browser.newPage();
       
@@ -949,11 +950,13 @@ class PDFService {
       await page.setDefaultTimeout(60000);
       
       const html = this.getBaseTemplate(title, content);
+      console.log('📄 PDFService: HTML template generated, length:', html.length);
       
       await page.setContent(html, { 
         waitUntil: 'networkidle0',
         timeout: 60000 
       });
+      console.log('📄 PDFService: Page content set, generating PDF...');
       
       const pdfBuffer = await page.pdf({
         format: 'A4',
@@ -967,12 +970,26 @@ class PDFService {
         displayHeaderFooter: false
       });
       
+      console.log(`📄 PDFService: PDF generated successfully, size: ${pdfBuffer.length} bytes`);
+      
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error('Generated PDF buffer is empty');
+      }
+      
+      // Verify it's a valid PDF (starts with %PDF)
+      const pdfHeader = pdfBuffer.toString('utf8', 0, 4);
+      if (pdfHeader !== '%PDF') {
+        console.error('❌ PDFService: Invalid PDF header:', pdfHeader);
+        throw new Error('Generated PDF is not valid');
+      }
+      
       await page.close();
       // Don't close browser here - keep it for reuse
       
       return pdfBuffer;
     } catch (error) {
       console.error('❌ PDFService: Error in PDF generation:', error.message);
+      console.error('❌ PDFService: Error stack:', error.stack);
       if (page) {
         try {
           await page.close();

@@ -41,6 +41,17 @@ exports.generateExpenseReport = async (req, res) => {
     }
     
     console.log('📊 Expense Report Filter:', JSON.stringify(filter, null, 2));
+    console.log('📊 Query params:', { category, startDate, endDate, paymentStatus });
+    
+    // Debug: Check total expenses in database
+    const totalExpenses = await Expense.countDocuments({});
+    console.log(`📊 Total expenses in database: ${totalExpenses}`);
+    
+    // Debug: Check expenses without date filter
+    const filterWithoutDate = { ...filter };
+    delete filterWithoutDate.expenseDate;
+    const expensesWithoutDateFilter = await Expense.countDocuments(filterWithoutDate);
+    console.log(`📊 Expenses matching filters (without date): ${expensesWithoutDateFilter}`);
     
     // Fetch expenses - use .lean() to get plain JavaScript objects
     const expenses = await Expense.find(filter).lean().sort({ expenseDate: -1 });
@@ -52,6 +63,13 @@ exports.generateExpenseReport = async (req, res) => {
       console.log('📊 Sample expense:', JSON.stringify(expenses[0], null, 2));
     } else {
       console.log('⚠️ No expenses found for the given filters');
+      // Try fetching without date filter to see if data exists
+      const testExpenses = await Expense.find(filterWithoutDate).lean().limit(5);
+      if (testExpenses.length > 0) {
+        console.log(`📊 Found ${testExpenses.length} expenses without date filter - date filter might be too strict`);
+        console.log('📊 Sample expense date:', testExpenses[0].expenseDate);
+        console.log('📊 Requested date range:', { startDate, endDate });
+      }
     }
     
     // Calculate summary
@@ -118,6 +136,17 @@ exports.generateProductReport = async (req, res) => {
     }
     
     console.log('📊 Product Report Filter:', JSON.stringify(filter, null, 2));
+    console.log('📊 Query params:', { productType, transactionType, clientName, paymentStatus, startDate, endDate });
+    
+    // Debug: Check total products in database
+    const totalProducts = await Product.countDocuments({ productType });
+    console.log(`📊 Total ${productType} products in database: ${totalProducts}`);
+    
+    // Debug: Check products without date filter
+    const filterWithoutDate = { ...filter };
+    delete filterWithoutDate.createdAt;
+    const productsWithoutDateFilter = await Product.countDocuments(filterWithoutDate);
+    console.log(`📊 Products matching filters (without date): ${productsWithoutDateFilter}`);
     
     // Fetch transactions - use .lean() to get plain JavaScript objects
     const transactions = await Product.find(filter).lean().sort({ createdAt: -1 });
@@ -129,6 +158,13 @@ exports.generateProductReport = async (req, res) => {
       console.log('📊 Sample transaction:', JSON.stringify(transactions[0], null, 2));
     } else {
       console.log('⚠️ No transactions found for the given filters');
+      // Try fetching without date filter to see if data exists
+      const testTransactions = await Product.find(filterWithoutDate).lean().limit(5);
+      if (testTransactions.length > 0) {
+        console.log(`📊 Found ${testTransactions.length} transactions without date filter - date filter might be too strict`);
+        console.log('📊 Sample transaction date:', testTransactions[0].createdAt);
+        console.log('📊 Requested date range:', { startDate, endDate });
+      }
     }
     
     // Calculate summary
