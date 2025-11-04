@@ -2,6 +2,19 @@ const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
+// For Vercel/serverless environments, use Chromium binary
+let chromium;
+if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  try {
+    chromium = require('@sparticuz/chromium');
+    // Set Chromium path for serverless
+    chromium.setGraphicsMode(false);
+    console.log('✅ Using @sparticuz/chromium for serverless environment');
+  } catch (e) {
+    console.warn('⚠️ @sparticuz/chromium not found, using default Puppeteer:', e.message);
+  }
+}
+
 class PDFReportService {
   constructor() {
     // Use /tmp for serverless environments, local reports folder for development
@@ -754,14 +767,36 @@ class PDFReportService {
     // Ensure output directory exists before creating PDF (lazy initialization)
     this.ensureOutputDir();
     
-    const browser = await puppeteer.launch({
+    // Configure Puppeteer for serverless environments
+    const launchOptions = {
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    };
     
+    // For Vercel/serverless, use Chromium binary
+    if (chromium && (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)) {
+      try {
+        const executablePath = await chromium.executablePath();
+        launchOptions.executablePath = executablePath;
+        launchOptions.args = [
+          ...chromium.args,
+          '--hide-scrollbars',
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process'
+        ];
+        console.log('✅ Using Chromium executable:', executablePath);
+      } catch (chromiumError) {
+        console.error('❌ Error getting Chromium executable path:', chromiumError.message);
+        // Fall back to default Puppeteer
+        console.log('⚠️ Falling back to default Puppeteer configuration');
+      }
+    }
+    
+    let browser;
     try {
+      browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
       
       const filePath = path.join(this.outputDir, filename);
       
@@ -778,8 +813,13 @@ class PDFReportService {
       });
       
       return filePath;
+    } catch (error) {
+      console.error('❌ Error in PDF generation:', error.message);
+      throw new Error(`PDF generation failed: ${error.message}`);
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 
