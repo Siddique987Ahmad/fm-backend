@@ -788,22 +788,22 @@ class PDFService {
             ${expenses && expenses.length > 0 ? expenses.map(expense => {
               const outstandingAmount = (expense.amount || 0) - (expense.amountPaid || 0);
               return `
-              <tr>
-                <td>${expense.expenseDate ? new Date(expense.expenseDate).toLocaleDateString('en-PK') : 'N/A'}</td>
-                <td>${this.capitalize(expense.expenseCategory || 'N/A')}</td>
-                <td>${expense.title || 'N/A'}</td>
-                <td class="amount">Rs.${(expense.amount || 0).toLocaleString()}</td>
-                <td class="amount positive">Rs.${(expense.amountPaid || 0).toLocaleString()}</td>
-                <td>
-                  <span class="status-badge status-${expense.paymentStatus || 'pending'}">
-                    ${this.capitalize(expense.paymentStatus || 'pending')}
-                  </span>
-                </td>
-                <td class="amount ${outstandingAmount > 0 ? 'negative' : 'positive'}">
-                  Rs.${outstandingAmount.toLocaleString()}
-                </td>
-              </tr>
-            `;
+                <tr>
+                  <td>${expense.expenseDate ? new Date(expense.expenseDate).toLocaleDateString('en-PK') : 'N/A'}</td>
+                  <td>${this.capitalize(expense.expenseCategory || 'N/A')}</td>
+                  <td>${expense.title || 'N/A'}</td>
+                  <td class="amount">Rs.${(expense.amount || 0).toLocaleString()}</td>
+                  <td class="amount positive">Rs.${(expense.amountPaid || 0).toLocaleString()}</td>
+                  <td>
+                    <span class="status-badge status-${expense.paymentStatus || 'pending'}">
+                      ${this.capitalize(expense.paymentStatus || 'pending')}
+                    </span>
+                  </td>
+                  <td class="amount ${outstandingAmount > 0 ? 'negative' : 'positive'}">
+                    Rs.${outstandingAmount.toLocaleString()}
+                  </td>
+                </tr>
+              `;
             }).join('') : `
               <tr>
                 <td colspan="7" style="text-align: center; padding: 40px; color: #718096;">
