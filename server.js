@@ -52,8 +52,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Middleware to ensure JSON responses (skip for PDF routes)
 app.use((req, res, next) => {
-  // Skip for PDF routes
-  const isPdfRoute = req.path.includes('/pdf') || req.path.includes('/reports/pdf');
+  // Skip for PDF routes - check both path and URL
+  const isPdfRoute = req.path.includes('/pdf') || 
+                     req.originalUrl.includes('/pdf') ||
+                     req.path.includes('/reports/pdf') ||
+                     req.originalUrl.includes('/reports/pdf');
   
   if (isPdfRoute) {
     return next();
@@ -92,7 +95,11 @@ app.use('/api', async (req, res, next) => {
   }
 
   // Skip setting Content-Type for PDF routes - they'll set their own
-  const isPdfRoute = req.path.includes('/pdf') || req.path.includes('/reports/pdf');
+  // Check both path and originalUrl to catch all route patterns
+  const isPdfRoute = req.path.includes('/pdf') || 
+                     req.originalUrl.includes('/pdf') ||
+                     req.path.includes('/reports/pdf') ||
+                     req.originalUrl.includes('/reports/pdf');
   
   try {
     // Only set JSON header for non-PDF routes
