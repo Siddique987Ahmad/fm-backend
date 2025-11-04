@@ -386,8 +386,6 @@ if (isServerless) {
   try {
     chromium = require('@sparticuz/chromium');
     puppeteer = require('puppeteer-core');
-    // Configure Chromium for serverless
-    chromium.setGraphicsMode(false);
     console.log('✅ PDFService: Using puppeteer-core with @sparticuz/chromium for serverless environment');
   } catch (e) {
     console.warn('⚠️ PDFService: Serverless dependencies not found, using default Puppeteer:', e.message);
@@ -421,21 +419,23 @@ class PDFService {
       // For Vercel/serverless, use Chromium binary with puppeteer-core
       if (chromium && isServerless) {
         try {
-          chromium.setGraphicsMode(false);
           const executablePath = await chromium.executablePath();
           launchOptions.executablePath = executablePath;
+          
+          // Use Chromium's recommended args, merge with our additional ones
+          const chromiumArgs = chromium.args || [];
           launchOptions.args = [
-            ...chromium.args,
-            '--hide-scrollbars',
-            '--disable-web-security',
-            '--disable-features=IsolateOrigins,site-per-process',
+            ...chromiumArgs,
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
-            '--single-process',
             '--disable-gpu',
             '--disable-software-rasterizer',
             '--disable-extensions',
+            '--single-process',
+            '--hide-scrollbars',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
             '--disable-renderer-backgrounding',
@@ -443,8 +443,10 @@ class PDFService {
             '--disable-ipc-flooding-protection'
           ];
           console.log('✅ PDFService: Using Chromium executable for serverless:', executablePath);
+          console.log('✅ PDFService: Chromium args count:', launchOptions.args.length);
         } catch (chromiumError) {
           console.error('❌ PDFService: Error getting Chromium executable path:', chromiumError.message);
+          console.error('❌ PDFService: Chromium error stack:', chromiumError.stack);
           throw new Error(`Chromium setup failed: ${chromiumError.message}`);
         }
       }
