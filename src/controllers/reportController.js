@@ -511,33 +511,25 @@ exports.generatePDFReport = asyncHandler(async (req, res, next) => {
       });
     }
 
-    // Send the PDF file with explicit Content-Type
-    // Set Content-Type to application/pdf before downloading
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(pdfPath)}"`);
-    
-    // Read and send the file
-    const fileStream = fs.createReadStream(pdfPath);
-    fileStream.pipe(res);
-    
-    fileStream.on('end', () => {
-      // Clean up the file after sending
-      setTimeout(() => {
-        fs.unlink(pdfPath, (unlinkErr) => {
-          if (unlinkErr) console.error('Error deleting PDF file:', unlinkErr);
-        });
-      }, 5000);
-    });
-    
-    fileStream.on('error', (err) => {
-      console.error('Error sending PDF:', err);
-      // Only send error if headers haven't been sent
-      if (!res.headersSent) {
-        res.status(500).json({
-          success: false,
-          message: 'Error sending PDF file',
-          error: err.message || 'Unknown error'
-        });
+    // Send the PDF file
+    res.download(pdfPath, path.basename(pdfPath), (err) => {
+      if (err) {
+        console.error('Error sending PDF:', err);
+        // Only send error if headers haven't been sent
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: 'Error sending PDF file',
+            error: err.message || 'Unknown error'
+          });
+        }
+      } else {
+        // Clean up the file after sending
+        setTimeout(() => {
+          fs.unlink(pdfPath, (unlinkErr) => {
+            if (unlinkErr) console.error('Error deleting PDF file:', unlinkErr);
+          });
+        }, 5000);
       }
     });
 
