@@ -50,8 +50,15 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Middleware to ensure JSON responses
+// Middleware to ensure JSON responses (skip for PDF routes)
 app.use((req, res, next) => {
+  // Skip for PDF routes
+  const isPdfRoute = req.path.includes('/pdf') || req.path.includes('/reports/pdf');
+  
+  if (isPdfRoute) {
+    return next();
+  }
+  
   // Store original json method
   const originalJson = res.json;
   
@@ -84,9 +91,14 @@ app.use('/api', async (req, res, next) => {
     return next();
   }
 
+  // Skip setting Content-Type for PDF routes - they'll set their own
+  const isPdfRoute = req.path.includes('/pdf') || req.path.includes('/reports/pdf');
+  
   try {
-    // Ensure JSON response header is set early
-    res.setHeader('Content-Type', 'application/json');
+    // Only set JSON header for non-PDF routes
+    if (!isPdfRoute) {
+      res.setHeader('Content-Type', 'application/json');
+    }
     
     await dbConnection();
     next();
@@ -95,8 +107,10 @@ app.use('/api', async (req, res, next) => {
     console.error('DB Error stack:', error.stack);
     
     if (!res.headersSent) {
-      // Set JSON header explicitly
-      res.setHeader('Content-Type', 'application/json');
+      // Set JSON header explicitly for error responses (unless it's a PDF route)
+      if (!isPdfRoute) {
+        res.setHeader('Content-Type', 'application/json');
+      }
       return res.status(503).json({
         success: false,
         message: 'Database connection failed. Please try again later.',
