@@ -403,28 +403,28 @@ router.patch('/employees/:id/toggle-status',
 // Reports Routes
 // @route   GET /api/admin/reports/sales
 // @desc    Get sales report data
-// @access  Private (Admin/Manager)
+// @access  Private (read_report permission required)
 router.get('/reports/sales', 
   protect, 
-  checkPermission('read_product'),
+  checkPermission('read_report'),
   getSalesReport
 );
 
 // @route   GET /api/admin/reports/purchases
 // @desc    Get purchases report data
-// @access  Private (Admin/Manager)
+// @access  Private (read_report permission required)
 router.get('/reports/purchases', 
   protect, 
-  checkPermission('read_product'),
+  checkPermission('read_report'),
   getPurchasesReport
 );
 
 // @route   GET /api/admin/reports/expenses
 // @desc    Get expenses report data
-// @access  Private (Admin/Manager)
+// @access  Private (read_report permission required)
 router.get('/reports/expenses', 
   protect, 
-  checkPermission('read_expense'),
+  checkPermission('read_report'),
   getExpensesReport
 );
 
@@ -448,19 +448,19 @@ router.get('/reports/employees',
 
 // @route   GET /api/admin/reports/pdf/:reportType
 // @desc    Generate PDF report
-// @access  Private (Admin/Manager)
+// @access  Private (create_report permission required)
 router.get('/reports/pdf/:reportType', 
   protect, 
-  checkPermission('read_product'),
+  checkPermission('create_report'),
   generatePDFReport
 );
 
 // @route   GET /api/admin/reports/pdf/sales/:productName
 // @desc    Generate specific product sales PDF
-// @access  Private (Admin/Manager)
+// @access  Private (create_report permission required)
 router.get('/reports/pdf/sales/:productName', 
   protect, 
-  checkPermission('read_product'),
+  checkPermission('create_report'),
   (req, res, next) => {
     req.params.reportType = 'sales';
     req.query.productName = req.params.productName;
@@ -470,10 +470,10 @@ router.get('/reports/pdf/sales/:productName',
 
 // @route   GET /api/admin/reports/pdf/purchases/:productName
 // @desc    Generate specific product purchases PDF
-// @access  Private (Admin/Manager)
+// @access  Private (create_report permission required)
 router.get('/reports/pdf/purchases/:productName', 
   protect, 
-  checkPermission('read_product'),
+  checkPermission('create_report'),
   (req, res, next) => {
     req.params.reportType = 'purchases';
     req.query.productName = req.params.productName;
