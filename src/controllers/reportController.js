@@ -502,14 +502,27 @@ exports.generatePDFReport = asyncHandler(async (req, res, next) => {
         });
     }
 
+    // Verify PDF file exists before sending
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(500).json({
+        success: false,
+        message: 'PDF file was not generated',
+        error: 'File not found'
+      });
+    }
+
     // Send the PDF file
     res.download(pdfPath, path.basename(pdfPath), (err) => {
       if (err) {
         console.error('Error sending PDF:', err);
-        res.status(500).json({
-          success: false,
-          message: 'Error sending PDF file'
-        });
+        // Only send error if headers haven't been sent
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: 'Error sending PDF file',
+            error: err.message || 'Unknown error'
+          });
+        }
       } else {
         // Clean up the file after sending
         setTimeout(() => {
@@ -522,11 +535,14 @@ exports.generatePDFReport = asyncHandler(async (req, res, next) => {
 
   } catch (error) {
     console.error('Error generating PDF:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error generating PDF report',
-      error: error.message
-    });
+    // Ensure we haven't already sent a response
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Error generating PDF report',
+        error: error.message || 'Unknown error occurred'
+      });
+    }
   }
 });
 
