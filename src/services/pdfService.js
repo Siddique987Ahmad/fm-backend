@@ -732,16 +732,22 @@ class PDFService {
   // Generate Expense Report
   async generateExpenseReport(expenses, summary, filters) {
     try {
+      // Ensure expenses is an array
+      const expensesArray = Array.isArray(expenses) ? expenses : [];
+      console.log(`📄 PDFService: Generating expense report with ${expensesArray.length} expenses`);
+      
       const title = `Expense Report${filters.category ? ` - ${filters.category.toUpperCase()}` : ''}`;
       const subtitle = this.getFilterSubtitle(filters);
       
       // Generate summary stats
       const stats = {
-        totalRecords: expenses.length,
+        totalRecords: expensesArray.length,
         totalAmount: summary.totalAmount || 0,
         paidAmount: summary.totalPaid || 0,
         pendingAmount: summary.pendingAmount || 0
       };
+      
+      console.log(`📄 PDFService: Stats - ${stats.totalRecords} records, Total: Rs.${stats.totalAmount}`);
 
       const content = `
         <div class="header">
@@ -785,18 +791,22 @@ class PDFService {
             </tr>
           </thead>
           <tbody>
-            ${expenses && expenses.length > 0 ? expenses.map(expense => {
-              const outstandingAmount = (expense.amount || 0) - (expense.amountPaid || 0);
+            ${expensesArray && expensesArray.length > 0 ? expensesArray.map(expense => {
+              // Ensure expense is a plain object
+              const exp = expense && typeof expense === 'object' ? expense : {};
+              const outstandingAmount = (Number(exp.amount) || 0) - (Number(exp.amountPaid) || 0);
+              const expenseDate = exp.expenseDate ? (exp.expenseDate instanceof Date ? exp.expenseDate : new Date(exp.expenseDate)) : null;
+              
               return `
                 <tr>
-                  <td>${expense.expenseDate ? new Date(expense.expenseDate).toLocaleDateString('en-PK') : 'N/A'}</td>
-                  <td>${this.capitalize(expense.expenseCategory || 'N/A')}</td>
-                  <td>${expense.title || 'N/A'}</td>
-                  <td class="amount">Rs.${(expense.amount || 0).toLocaleString()}</td>
-                  <td class="amount positive">Rs.${(expense.amountPaid || 0).toLocaleString()}</td>
+                  <td>${expenseDate ? expenseDate.toLocaleDateString('en-PK') : 'N/A'}</td>
+                  <td>${this.capitalize(exp.expenseCategory || 'N/A')}</td>
+                  <td>${exp.title || 'N/A'}</td>
+                  <td class="amount">Rs.${(Number(exp.amount) || 0).toLocaleString()}</td>
+                  <td class="amount positive">Rs.${(Number(exp.amountPaid) || 0).toLocaleString()}</td>
                   <td>
-                    <span class="status-badge status-${expense.paymentStatus || 'pending'}">
-                      ${this.capitalize(expense.paymentStatus || 'pending')}
+                    <span class="status-badge status-${exp.paymentStatus || 'pending'}">
+                      ${this.capitalize(exp.paymentStatus || 'pending')}
                     </span>
                   </td>
                   <td class="amount ${outstandingAmount > 0 ? 'negative' : 'positive'}">
@@ -824,16 +834,22 @@ class PDFService {
   // Generate Product Report
   async generateProductReport(transactions, summary, productType, filters) {
     try {
+      // Ensure transactions is an array
+      const transactionsArray = Array.isArray(transactions) ? transactions : [];
+      console.log(`📄 PDFService: Generating product report with ${transactionsArray.length} transactions`);
+      
       const title = `${this.capitalize(productType.replace('-', ' '))} Transaction Report`;
       const subtitle = this.getFilterSubtitle(filters);
       
       // Generate summary stats
       const stats = {
-        totalRecords: transactions.length,
+        totalRecords: transactionsArray.length,
         totalAmount: summary.totalValue || 0,
         paidAmount: summary.totalReceived || 0,
         pendingAmount: summary.totalOutstanding || 0
       };
+      
+      console.log(`📄 PDFService: Stats - ${stats.totalRecords} records, Total: Rs.${stats.totalAmount}`);
 
       const content = `
         <div class="header">
@@ -878,26 +894,32 @@ class PDFService {
             </tr>
           </thead>
           <tbody>
-            ${transactions && transactions.length > 0 ? transactions.map(transaction => `
+            ${transactionsArray && transactionsArray.length > 0 ? transactionsArray.map(transaction => {
+              // Ensure transaction is a plain object
+              const txn = transaction && typeof transaction === 'object' ? transaction : {};
+              const createdAt = txn.createdAt ? (txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)) : null;
+              
+              return `
               <tr>
-                <td>${transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('en-PK') : 'N/A'}</td>
+                <td>${createdAt ? createdAt.toLocaleDateString('en-PK') : 'N/A'}</td>
                 <td>
-                  <span class="status-badge ${transaction.transactionType === 'sale' ? 'status-paid' : 'status-pending'}">
-                    ${this.capitalize(transaction.transactionType || 'N/A')}
+                  <span class="status-badge ${txn.transactionType === 'sale' ? 'status-paid' : 'status-pending'}">
+                    ${this.capitalize(txn.transactionType || 'N/A')}
                   </span>
                 </td>
-                <td>${transaction.clientName || 'N/A'}</td>
-                <td>${transaction.weight ? transaction.weight.toFixed(2) : '0.00'}</td>
-                <td class="amount">Rs.${(transaction.rate || 0).toLocaleString()}</td>
-                <td class="amount">Rs.${(transaction.totalBalance || 0).toLocaleString()}</td>
-                <td class="amount positive">Rs.${(transaction.remainingAmount || 0).toLocaleString()}</td>
+                <td>${txn.clientName || 'N/A'}</td>
+                <td>${txn.weight ? Number(txn.weight).toFixed(2) : '0.00'}</td>
+                <td class="amount">Rs.${(Number(txn.rate) || 0).toLocaleString()}</td>
+                <td class="amount">Rs.${(Number(txn.totalBalance) || 0).toLocaleString()}</td>
+                <td class="amount positive">Rs.${(Number(txn.remainingAmount) || 0).toLocaleString()}</td>
                 <td>
-                  <span class="status-badge status-${this.getPaymentStatus(transaction).toLowerCase()}">
-                    ${this.getPaymentStatus(transaction)}
+                  <span class="status-badge status-${this.getPaymentStatus(txn).toLowerCase()}">
+                    ${this.getPaymentStatus(txn)}
                   </span>
                 </td>
               </tr>
-            `).join('') : `
+            `;
+            }).join('') : `
               <tr>
                 <td colspan="8" style="text-align: center; padding: 40px; color: #718096;">
                   No transactions found for the selected filters

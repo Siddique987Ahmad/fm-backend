@@ -42,13 +42,15 @@ exports.generateExpenseReport = async (req, res) => {
     
     console.log('📊 Expense Report Filter:', JSON.stringify(filter, null, 2));
     
-    // Fetch expenses
-    const expenses = await Expense.find(filter).sort({ expenseDate: -1 });
+    // Fetch expenses - use .lean() to get plain JavaScript objects
+    const expenses = await Expense.find(filter).lean().sort({ expenseDate: -1 });
     
     console.log(`📊 Found ${expenses.length} expenses for report`);
     
-    // If no expenses found, still generate a PDF with empty data
-    if (expenses.length === 0) {
+    // Log sample expense to verify structure
+    if (expenses.length > 0) {
+      console.log('📊 Sample expense:', JSON.stringify(expenses[0], null, 2));
+    } else {
       console.log('⚠️ No expenses found for the given filters');
     }
     
@@ -62,9 +64,11 @@ exports.generateExpenseReport = async (req, res) => {
     
     console.log('📊 Expense Summary:', summary);
     
-    // Generate PDF using pdfService
+    // Generate PDF using pdfService - ensure expenses is an array
     const filters = { category, startDate, endDate, paymentStatus };
-    const pdfBuffer = await pdfService.generateExpenseReport(expenses, summary, filters);
+    const expensesArray = Array.isArray(expenses) ? expenses : [];
+    console.log(`📊 Passing ${expensesArray.length} expenses to PDF service`);
+    const pdfBuffer = await pdfService.generateExpenseReport(expensesArray, summary, filters);
     
     console.log(`✅ PDF generated successfully, size: ${pdfBuffer.length} bytes`);
     
@@ -115,13 +119,15 @@ exports.generateProductReport = async (req, res) => {
     
     console.log('📊 Product Report Filter:', JSON.stringify(filter, null, 2));
     
-    // Fetch transactions
-    const transactions = await Product.find(filter).sort({ createdAt: -1 });
+    // Fetch transactions - use .lean() to get plain JavaScript objects
+    const transactions = await Product.find(filter).lean().sort({ createdAt: -1 });
     
     console.log(`📊 Found ${transactions.length} transactions for product type: ${productType}`);
     
-    // If no transactions found, still generate a PDF with empty data
-    if (transactions.length === 0) {
+    // Log sample transaction to verify structure
+    if (transactions.length > 0) {
+      console.log('📊 Sample transaction:', JSON.stringify(transactions[0], null, 2));
+    } else {
       console.log('⚠️ No transactions found for the given filters');
     }
     
@@ -150,9 +156,11 @@ exports.generateProductReport = async (req, res) => {
       console.log(`📊 Filtered to ${filteredTransactions.length} transactions with payment status: ${paymentStatus}`);
     }
     
-    // Generate PDF using pdfService
+    // Generate PDF using pdfService - ensure transactions is an array
     const filters = { transactionType, clientName, paymentStatus, startDate, endDate };
-    const pdfBuffer = await pdfService.generateProductReport(filteredTransactions, summary, productType, filters);
+    const transactionsArray = Array.isArray(filteredTransactions) ? filteredTransactions : [];
+    console.log(`📊 Passing ${transactionsArray.length} transactions to PDF service`);
+    const pdfBuffer = await pdfService.generateProductReport(transactionsArray, summary, productType, filters);
     
     console.log(`✅ PDF generated successfully, size: ${pdfBuffer.length} bytes`);
     
