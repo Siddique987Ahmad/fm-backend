@@ -26,12 +26,31 @@ exports.generateExpenseReport = async (req, res) => {
     if (paymentStatus) filter.paymentStatus = paymentStatus;
     if (startDate || endDate) {
       filter.expenseDate = {};
-      if (startDate) filter.expenseDate.$gte = new Date(startDate);
-      if (endDate) filter.expenseDate.$lte = new Date(endDate);
+      if (startDate) {
+        // Set to start of day
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        filter.expenseDate.$gte = start;
+      }
+      if (endDate) {
+        // Set to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.expenseDate.$lte = end;
+      }
     }
+    
+    console.log('📊 Expense Report Filter:', JSON.stringify(filter, null, 2));
     
     // Fetch expenses
     const expenses = await Expense.find(filter).sort({ expenseDate: -1 });
+    
+    console.log(`📊 Found ${expenses.length} expenses for report`);
+    
+    // If no expenses found, still generate a PDF with empty data
+    if (expenses.length === 0) {
+      console.log('⚠️ No expenses found for the given filters');
+    }
     
     // Calculate summary
     const summary = expenses.reduce((acc, expense) => {
@@ -41,9 +60,13 @@ exports.generateExpenseReport = async (req, res) => {
       return acc;
     }, { totalAmount: 0, totalPaid: 0, pendingAmount: 0 });
     
+    console.log('📊 Expense Summary:', summary);
+    
     // Generate PDF using pdfService
     const filters = { category, startDate, endDate, paymentStatus };
     const pdfBuffer = await pdfService.generateExpenseReport(expenses, summary, filters);
+    
+    console.log(`✅ PDF generated successfully, size: ${pdfBuffer.length} bytes`);
     
     // Set headers and send PDF
     res.setHeader('Content-Type', 'application/pdf');
@@ -51,6 +74,7 @@ exports.generateExpenseReport = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Error generating expense report:', error);
+    console.error('Error stack:', error.stack);
     if (!res.headersSent) {
       res.status(500).json({ 
         success: false, 
@@ -75,12 +99,31 @@ exports.generateProductReport = async (req, res) => {
     if (clientName) filter.clientName = { $regex: clientName, $options: 'i' };
     if (startDate || endDate) {
       filter.createdAt = {};
-      if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      if (startDate) {
+        // Set to start of day
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        filter.createdAt.$gte = start;
+      }
+      if (endDate) {
+        // Set to end of day
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
     }
+    
+    console.log('📊 Product Report Filter:', JSON.stringify(filter, null, 2));
     
     // Fetch transactions
     const transactions = await Product.find(filter).sort({ createdAt: -1 });
+    
+    console.log(`📊 Found ${transactions.length} transactions for product type: ${productType}`);
+    
+    // If no transactions found, still generate a PDF with empty data
+    if (transactions.length === 0) {
+      console.log('⚠️ No transactions found for the given filters');
+    }
     
     // Calculate summary
     const summary = transactions.reduce((acc, transaction) => {
@@ -89,6 +132,8 @@ exports.generateProductReport = async (req, res) => {
       acc.totalOutstanding += (transaction.totalBalance || 0) - (transaction.remainingAmount || 0);
       return acc;
     }, { totalValue: 0, totalReceived: 0, totalOutstanding: 0 });
+    
+    console.log('📊 Product Summary:', summary);
     
     // Filter by payment status if provided (client-side filtering for status)
     let filteredTransactions = transactions;
@@ -102,11 +147,14 @@ exports.generateProductReport = async (req, res) => {
         }
         return status === paymentStatus.toLowerCase();
       });
+      console.log(`📊 Filtered to ${filteredTransactions.length} transactions with payment status: ${paymentStatus}`);
     }
     
     // Generate PDF using pdfService
     const filters = { transactionType, clientName, paymentStatus, startDate, endDate };
     const pdfBuffer = await pdfService.generateProductReport(filteredTransactions, summary, productType, filters);
+    
+    console.log(`✅ PDF generated successfully, size: ${pdfBuffer.length} bytes`);
     
     // Set headers and send PDF
     res.setHeader('Content-Type', 'application/pdf');
@@ -114,6 +162,7 @@ exports.generateProductReport = async (req, res) => {
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Error generating product report:', error);
+    console.error('Error stack:', error.stack);
     if (!res.headersSent) {
       res.status(500).json({ 
         success: false, 

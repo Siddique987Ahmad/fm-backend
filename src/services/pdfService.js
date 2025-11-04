@@ -785,23 +785,32 @@ class PDFService {
             </tr>
           </thead>
           <tbody>
-            ${expenses.map(expense => `
+            ${expenses && expenses.length > 0 ? expenses.map(expense => {
+              const outstandingAmount = (expense.amount || 0) - (expense.amountPaid || 0);
+              return `
               <tr>
-                <td>${new Date(expense.expenseDate).toLocaleDateString('en-PK')}</td>
-                <td>${this.capitalize(expense.expenseCategory)}</td>
+                <td>${expense.expenseDate ? new Date(expense.expenseDate).toLocaleDateString('en-PK') : 'N/A'}</td>
+                <td>${this.capitalize(expense.expenseCategory || 'N/A')}</td>
                 <td>${expense.title || 'N/A'}</td>
-                <td class="amount">Rs.${expense.amount.toLocaleString()}</td>
-                <td class="amount positive">Rs.${expense.amountPaid.toLocaleString()}</td>
+                <td class="amount">Rs.${(expense.amount || 0).toLocaleString()}</td>
+                <td class="amount positive">Rs.${(expense.amountPaid || 0).toLocaleString()}</td>
                 <td>
-                  <span class="status-badge status-${expense.paymentStatus}">
-                    ${this.capitalize(expense.paymentStatus)}
+                  <span class="status-badge status-${expense.paymentStatus || 'pending'}">
+                    ${this.capitalize(expense.paymentStatus || 'pending')}
                   </span>
                 </td>
-                <td class="amount ${expense.outstandingAmount > 0 ? 'negative' : 'positive'}">
-                  Rs.${expense.outstandingAmount.toLocaleString()}
+                <td class="amount ${outstandingAmount > 0 ? 'negative' : 'positive'}">
+                  Rs.${outstandingAmount.toLocaleString()}
                 </td>
               </tr>
-            `).join('')}
+            `;
+            }).join('') : `
+              <tr>
+                <td colspan="7" style="text-align: center; padding: 40px; color: #718096;">
+                  No expenses found for the selected filters
+                </td>
+              </tr>
+            `}
           </tbody>
         </table>
       `;
@@ -869,26 +878,32 @@ class PDFService {
             </tr>
           </thead>
           <tbody>
-            ${transactions.map(transaction => `
+            ${transactions && transactions.length > 0 ? transactions.map(transaction => `
               <tr>
-                <td>${new Date(transaction.createdAt).toLocaleDateString('en-PK')}</td>
+                <td>${transaction.createdAt ? new Date(transaction.createdAt).toLocaleDateString('en-PK') : 'N/A'}</td>
                 <td>
                   <span class="status-badge ${transaction.transactionType === 'sale' ? 'status-paid' : 'status-pending'}">
-                    ${this.capitalize(transaction.transactionType)}
+                    ${this.capitalize(transaction.transactionType || 'N/A')}
                   </span>
                 </td>
-                <td>${transaction.clientName}</td>
-                <td>${transaction.weight.toFixed(2)}</td>
-                <td class="amount">Rs.${transaction.rate}</td>
-                <td class="amount">Rs.${transaction.totalBalance.toLocaleString()}</td>
-                <td class="amount positive">Rs.${transaction.remainingAmount.toLocaleString()}</td>
+                <td>${transaction.clientName || 'N/A'}</td>
+                <td>${transaction.weight ? transaction.weight.toFixed(2) : '0.00'}</td>
+                <td class="amount">Rs.${(transaction.rate || 0).toLocaleString()}</td>
+                <td class="amount">Rs.${(transaction.totalBalance || 0).toLocaleString()}</td>
+                <td class="amount positive">Rs.${(transaction.remainingAmount || 0).toLocaleString()}</td>
                 <td>
                   <span class="status-badge status-${this.getPaymentStatus(transaction).toLowerCase()}">
                     ${this.getPaymentStatus(transaction)}
                   </span>
                 </td>
               </tr>
-            `).join('')}
+            `).join('') : `
+              <tr>
+                <td colspan="8" style="text-align: center; padding: 40px; color: #718096;">
+                  No transactions found for the selected filters
+                </td>
+              </tr>
+            `}
           </tbody>
         </table>
       `;
