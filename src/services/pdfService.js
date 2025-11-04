@@ -374,9 +374,28 @@
 // ===============================================
 // services/pdfService.js - Enhanced PDF Generation with Puppeteer
 // ===============================================
-const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
+
+// For Vercel/serverless environments, use puppeteer-core with Chromium binary
+let puppeteer;
+let chromium;
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+if (isServerless) {
+  try {
+    chromium = require('@sparticuz/chromium');
+    puppeteer = require('puppeteer-core');
+    // Configure Chromium for serverless
+    chromium.setGraphicsMode(false);
+    console.log('✅ PDFService: Using puppeteer-core with @sparticuz/chromium for serverless environment');
+  } catch (e) {
+    console.warn('⚠️ PDFService: Serverless dependencies not found, using default Puppeteer:', e.message);
+    puppeteer = require('puppeteer');
+  }
+} else {
+  puppeteer = require('puppeteer');
+}
 
 class PDFService {
   constructor() {
@@ -386,10 +405,51 @@ class PDFService {
   // Initialize browser
   async initBrowser() {
     if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        headless: 'new',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
+      const launchOptions = {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
+          '--single-process'
+        ]
+      };
+      
+      // For Vercel/serverless, use Chromium binary with puppeteer-core
+      if (chromium && isServerless) {
+        try {
+          chromium.setGraphicsMode(false);
+          const executablePath = await chromium.executablePath();
+          launchOptions.executablePath = executablePath;
+          launchOptions.args = [
+            ...chromium.args,
+            '--hide-scrollbars',
+            '--disable-web-security',
+            '--disable-features=IsolateOrigins,site-per-process',
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--single-process',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+            '--disable-extensions',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-features=TranslateUI',
+            '--disable-ipc-flooding-protection'
+          ];
+          console.log('✅ PDFService: Using Chromium executable for serverless:', executablePath);
+        } catch (chromiumError) {
+          console.error('❌ PDFService: Error getting Chromium executable path:', chromiumError.message);
+          throw new Error(`Chromium setup failed: ${chromiumError.message}`);
+        }
+      }
+      
+      this.browser = await puppeteer.launch(launchOptions);
     }
     return this.browser;
   }
@@ -841,31 +901,50 @@ class PDFService {
 
   // Core PDF generation method
   async generatePDF(title, content) {
-    const browser = await this.initBrowser();
-    const page = await browser.newPage();
-    
-    const html = this.getBaseTemplate(title, content);
-    
-    await page.setContent(html, { 
-      waitUntil: 'networkidle0',
-      timeout: 30000 
-    });
-    
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      margin: {
-        top: '20mm',
-        right: '15mm',
-        bottom: '20mm',
-        left: '15mm'
-      },
-      printBackground: true,
-      displayHeaderFooter: false
-    });
-    
-    await page.close();
-    
-    return pdfBuffer;
+    let browser;
+    let page;
+    try {
+      browser = await this.initBrowser();
+      page = await browser.newPage();
+      
+      // Set longer timeouts for serverless
+      await page.setDefaultNavigationTimeout(60000);
+      await page.setDefaultTimeout(60000);
+      
+      const html = this.getBaseTemplate(title, content);
+      
+      await page.setContent(html, { 
+        waitUntil: 'networkidle0',
+        timeout: 60000 
+      });
+      
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        margin: {
+          top: '20mm',
+          right: '15mm',
+          bottom: '20mm',
+          left: '15mm'
+        },
+        printBackground: true,
+        displayHeaderFooter: false
+      });
+      
+      await page.close();
+      // Don't close browser here - keep it for reuse
+      
+      return pdfBuffer;
+    } catch (error) {
+      console.error('❌ PDFService: Error in PDF generation:', error.message);
+      if (page) {
+        try {
+          await page.close();
+        } catch (closeError) {
+          console.error('⚠️ PDFService: Error closing page:', closeError.message);
+        }
+      }
+      throw new Error(`PDF generation failed: ${error.message}`);
+    }
   }
 
   // Save PDF to file

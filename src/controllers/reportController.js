@@ -7,6 +7,7 @@ const ProductCatalog = require('../models/ProductCatalog');
 const fs = require('fs');
 const path = require('path');
 const pdfReportService = require('../services/pdfReportService');
+const pdfService = require('../services/pdfService');
 
 // ===============================================
 // EXISTING FUNCTIONS (for reportRoutes.js)
@@ -17,10 +18,46 @@ const pdfReportService = require('../services/pdfReportService');
 // @access  Public
 exports.generateExpenseReport = async (req, res) => {
   try {
-    // Placeholder implementation
-    res.json({ success: true, message: 'Expense report PDF generation not implemented yet' });
+    const { category, startDate, endDate, paymentStatus } = req.query;
+    
+    // Build filter
+    const filter = {};
+    if (category) filter.expenseCategory = category;
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (startDate || endDate) {
+      filter.expenseDate = {};
+      if (startDate) filter.expenseDate.$gte = new Date(startDate);
+      if (endDate) filter.expenseDate.$lte = new Date(endDate);
+    }
+    
+    // Fetch expenses
+    const expenses = await Expense.find(filter).sort({ expenseDate: -1 });
+    
+    // Calculate summary
+    const summary = expenses.reduce((acc, expense) => {
+      acc.totalAmount += expense.amount || 0;
+      acc.totalPaid += expense.amountPaid || 0;
+      acc.pendingAmount += (expense.amount || 0) - (expense.amountPaid || 0);
+      return acc;
+    }, { totalAmount: 0, totalPaid: 0, pendingAmount: 0 });
+    
+    // Generate PDF using pdfService
+    const filters = { category, startDate, endDate, paymentStatus };
+    const pdfBuffer = await pdfService.generateExpenseReport(expenses, summary, filters);
+    
+    // Set headers and send PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="expense-report-${Date.now()}.pdf"`);
+    res.send(pdfBuffer);
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error generating expense report:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error generating expense report',
+        error: error.message 
+      });
+    }
   }
 };
 
@@ -29,10 +66,61 @@ exports.generateExpenseReport = async (req, res) => {
 // @access  Public
 exports.generateProductReport = async (req, res) => {
   try {
-    // Placeholder implementation
-    res.json({ success: true, message: 'Product report PDF generation not implemented yet' });
+    const { productType } = req.params;
+    const { transactionType, clientName, paymentStatus, startDate, endDate } = req.query;
+    
+    // Build filter
+    const filter = { productType };
+    if (transactionType) filter.transactionType = transactionType;
+    if (clientName) filter.clientName = { $regex: clientName, $options: 'i' };
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) filter.createdAt.$gte = new Date(startDate);
+      if (endDate) filter.createdAt.$lte = new Date(endDate);
+    }
+    
+    // Fetch transactions
+    const transactions = await Product.find(filter).sort({ createdAt: -1 });
+    
+    // Calculate summary
+    const summary = transactions.reduce((acc, transaction) => {
+      acc.totalValue += transaction.totalBalance || 0;
+      acc.totalReceived += transaction.remainingAmount || 0;
+      acc.totalOutstanding += (transaction.totalBalance || 0) - (transaction.remainingAmount || 0);
+      return acc;
+    }, { totalValue: 0, totalReceived: 0, totalOutstanding: 0 });
+    
+    // Filter by payment status if provided (client-side filtering for status)
+    let filteredTransactions = transactions;
+    if (paymentStatus) {
+      filteredTransactions = transactions.filter(transaction => {
+        const total = transaction.totalBalance || 0;
+        const received = transaction.remainingAmount || 0;
+        let status = 'pending';
+        if (received >= total) {
+          status = received > total ? 'advance' : 'paid';
+        }
+        return status === paymentStatus.toLowerCase();
+      });
+    }
+    
+    // Generate PDF using pdfService
+    const filters = { transactionType, clientName, paymentStatus, startDate, endDate };
+    const pdfBuffer = await pdfService.generateProductReport(filteredTransactions, summary, productType, filters);
+    
+    // Set headers and send PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${productType}-report-${Date.now()}.pdf"`);
+    res.send(pdfBuffer);
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error generating product report:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error generating product report',
+        error: error.message 
+      });
+    }
   }
 };
 
