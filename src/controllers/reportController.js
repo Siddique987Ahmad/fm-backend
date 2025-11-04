@@ -219,37 +219,182 @@ exports.generateProductReport = async (req, res) => {
 
 // @desc    Bulk approve/reject expenses
 // @route   POST /api/reports/expenses/bulk/approve
-// @access  Public
+// @access  Private (update_expense permission required)
 exports.bulkApproveExpenses = async (req, res) => {
   try {
-    // Placeholder implementation
-    res.json({ success: true, message: 'Bulk approve expenses not implemented yet' });
+    const { expenseIds, approvalStatus, notes } = req.body;
+
+    // Validate input
+    if (!expenseIds || !Array.isArray(expenseIds) || expenseIds.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'expenseIds array is required and must not be empty' 
+      });
+    }
+
+    if (!approvalStatus || !['approved', 'rejected', 'pending'].includes(approvalStatus)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'approvalStatus must be one of: approved, rejected, pending' 
+      });
+    }
+
+    // Update expenses
+    const updateData = { approvalStatus };
+    if (notes) {
+      updateData.description = notes;
+    }
+
+    const result = await Expense.updateMany(
+      { _id: { $in: expenseIds } },
+      { $set: updateData }
+    );
+
+    res.json({ 
+      success: true, 
+      message: `Successfully updated ${result.modifiedCount} expense(s)`,
+      data: {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error in bulkApproveExpenses:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update expenses',
+      error: error.message 
+    });
   }
 };
 
 // @desc    Bulk update expense status
 // @route   POST /api/reports/expenses/bulk/status
-// @access  Public
+// @access  Private (update_expense permission required)
 exports.bulkUpdateExpenseStatus = async (req, res) => {
   try {
-    // Placeholder implementation
-    res.json({ success: true, message: 'Bulk update expense status not implemented yet' });
+    const { expenseIds, status, paymentStatus } = req.body;
+
+    // Validate input
+    if (!expenseIds || !Array.isArray(expenseIds) || expenseIds.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'expenseIds array is required and must not be empty' 
+      });
+    }
+
+    // Build update object
+    const updateData = {};
+    
+    if (status) {
+      if (!['active', 'cancelled', 'completed'].includes(status)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'status must be one of: active, cancelled, completed' 
+        });
+      }
+      updateData.status = status;
+    }
+
+    if (paymentStatus) {
+      if (!['paid', 'pending', 'advance'].includes(paymentStatus)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'paymentStatus must be one of: paid, pending, advance' 
+        });
+      }
+      
+      // If setting to paid, also update amountPaid to match amount
+      // Use aggregation pipeline to set amountPaid = amount for each expense
+      if (paymentStatus === 'paid') {
+        const bulkOps = expenseIds.map(id => ({
+          updateOne: {
+            filter: { _id: id },
+            update: [
+              {
+                $set: {
+                  paymentStatus: 'paid',
+                  amountPaid: '$amount'
+                }
+              }
+            ]
+          }
+        }));
+        
+        if (bulkOps.length > 0) {
+          await Expense.bulkWrite(bulkOps);
+        }
+        // Don't add paymentStatus to updateData since we already handled it via bulkWrite
+      } else {
+        // For pending or advance, just update paymentStatus normally
+        updateData.paymentStatus = paymentStatus;
+      }
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'At least one of status or paymentStatus must be provided' 
+      });
+    }
+
+    // Update expenses
+    const result = await Expense.updateMany(
+      { _id: { $in: expenseIds } },
+      { $set: updateData }
+    );
+
+    res.json({ 
+      success: true, 
+      message: `Successfully updated ${result.modifiedCount} expense(s)`,
+      data: {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error in bulkUpdateExpenseStatus:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to update expenses',
+      error: error.message 
+    });
   }
 };
 
 // @desc    Bulk delete expenses
 // @route   DELETE /api/reports/expenses/bulk
-// @access  Public
+// @access  Private (delete_expense permission required)
 exports.bulkDeleteExpenses = async (req, res) => {
   try {
-    // Placeholder implementation
-    res.json({ success: true, message: 'Bulk delete expenses not implemented yet' });
+    const { expenseIds } = req.body;
+
+    // Validate input
+    if (!expenseIds || !Array.isArray(expenseIds) || expenseIds.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'expenseIds array is required and must not be empty' 
+      });
+    }
+
+    // Delete expenses
+    const result = await Expense.deleteMany({ _id: { $in: expenseIds } });
+
+    res.json({ 
+      success: true, 
+      message: `Successfully deleted ${result.deletedCount} expense(s)`,
+      data: {
+        deletedCount: result.deletedCount
+      }
+    });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    console.error('Error in bulkDeleteExpenses:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to delete expenses',
+      error: error.message 
+    });
   }
 };
 
