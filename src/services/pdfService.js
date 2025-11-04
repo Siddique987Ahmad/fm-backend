@@ -1137,35 +1137,102 @@ class PDFService {
         waitUntil: 'domcontentloaded',
         timeout: 30000 
       });
-      console.log('📄 PDFService: Page content set, generating PDF...');
+      console.log('📄 PDFService: Page content set');
       
-      // Wait a bit for any CSS/JS to render (using promise-based delay)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Wait for fonts and styles to load
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const pdfBuffer = await page.pdf({
-        format: 'A4',
-        margin: {
-          top: '20mm',
-          right: '15mm',
-          bottom: '20mm',
-          left: '15mm'
-        },
-        printBackground: true,
-        displayHeaderFooter: false
-      });
+      // Verify page loaded correctly
+      const pageTitle = await page.title();
+      console.log('📄 PDFService: Page title:', pageTitle);
       
-      console.log(`📄 PDFService: PDF generated successfully, size: ${pdfBuffer.length} bytes`);
+      // Check if page has content
+      const bodyContent = await page.evaluate(() => document.body ? document.body.innerHTML.length : 0);
+      console.log('📄 PDFService: Body content length:', bodyContent);
       
-      if (!pdfBuffer || pdfBuffer.length === 0) {
+      if (bodyContent === 0) {
+        throw new Error('Page content is empty after loading');
+      }
+      
+      console.log('📄 PDFService: Page loaded successfully, generating PDF...');
+      
+      console.log('📄 PDFService: Calling page.pdf()...');
+      let pdfBuffer;
+      try {
+        pdfBuffer = await page.pdf({
+          format: 'A4',
+          margin: {
+            top: '20mm',
+            right: '15mm',
+            bottom: '20mm',
+            left: '15mm'
+          },
+          printBackground: true,
+          displayHeaderFooter: false
+        });
+        console.log('📄 PDFService: page.pdf() completed');
+      } catch (pdfError) {
+        console.error('❌ PDFService: Error in page.pdf() call:', pdfError.message);
+        console.error('❌ PDFService: PDF error stack:', pdfError.stack);
+        throw new Error(`Failed to generate PDF from page: ${pdfError.message}`);
+      }
+      
+      console.log(`📄 PDFService: PDF buffer received, type: ${typeof pdfBuffer}, isBuffer: ${Buffer.isBuffer(pdfBuffer)}`);
+      
+      // Ensure we have a Buffer
+      let buffer;
+      if (Buffer.isBuffer(pdfBuffer)) {
+        buffer = pdfBuffer;
+      } else if (pdfBuffer instanceof Uint8Array) {
+        buffer = Buffer.from(pdfBuffer);
+      } else if (typeof pdfBuffer === 'string') {
+        // If it's a string, it might be an error message
+        console.error('❌ PDFService: PDF generation returned a string instead of buffer:', pdfBuffer.substring(0, 200));
+        throw new Error('PDF generation returned unexpected format: ' + pdfBuffer.substring(0, 100));
+      } else {
+        buffer = Buffer.from(pdfBuffer);
+      }
+      
+      console.log(`📄 PDFService: PDF buffer size: ${buffer.length} bytes`);
+      
+      if (!buffer || buffer.length === 0) {
         throw new Error('Generated PDF buffer is empty');
       }
       
       // Verify it's a valid PDF (starts with %PDF)
-      const pdfHeader = pdfBuffer.toString('utf8', 0, 4);
-      if (pdfHeader !== '%PDF') {
-        console.error('❌ PDFService: Invalid PDF header:', pdfHeader);
-        throw new Error('Generated PDF is not valid');
+      // Check both as string and as raw bytes
+      const pdfHeaderStr = buffer.toString('utf8', 0, 4);
+      const pdfHeaderBytes = buffer.slice(0, 4);
+      const firstBytes = buffer.slice(0, 20).toString('hex');
+      const firstBytesStr = buffer.toString('utf8', 0, 50);
+      
+      console.log(`📄 PDFService: PDF validation check:`);
+      console.log(`  - First 4 chars (string): "${pdfHeaderStr}"`);
+      console.log(`  - First 4 bytes (hex): ${pdfHeaderBytes.toString('hex')}`);
+      console.log(`  - First 20 bytes (hex): ${firstBytes}`);
+      console.log(`  - First 50 chars: "${firstBytesStr}"`);
+      
+      // Check if it starts with %PDF (both string and byte check)
+      const isValidPdf = pdfHeaderStr === '%PDF' || 
+                         (pdfHeaderBytes[0] === 0x25 && pdfHeaderBytes[1] === 0x50 && 
+                          pdfHeaderBytes[2] === 0x44 && pdfHeaderBytes[3] === 0x46);
+      
+      if (!isValidPdf) {
+        // Log more details about what we got
+        const first200Chars = buffer.toString('utf8', 0, 200);
+        console.error('❌ PDFService: Invalid PDF header. First 200 chars:', first200Chars);
+        
+        // Check if it's HTML (error page)
+        const bufferStr = buffer.toString('utf8', 0, 500);
+        if (bufferStr.includes('<html') || bufferStr.includes('<!DOCTYPE')) {
+          console.error('❌ PDFService: Buffer appears to be HTML instead of PDF');
+          throw new Error('PDF generation returned HTML instead of PDF. This might be an error page.');
+        }
+        
+        throw new Error(`Generated PDF is not valid. Header: "${pdfHeaderStr}", First bytes: ${firstBytes}`);
       }
+      
+      console.log('✅ PDFService: PDF header validation passed');
       
       // Close page and browser for cleanup (important in serverless)
       try {
@@ -1184,7 +1251,7 @@ class PDFService {
         console.warn('⚠️ PDFService: Error closing browser:', closeError.message);
       }
       
-      return pdfBuffer;
+      return buffer;
     } catch (error) {
       console.error('❌ PDFService: Error in PDF generation:', error.message);
       console.error('❌ PDFService: Error name:', error.name);
