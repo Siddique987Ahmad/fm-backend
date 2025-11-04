@@ -174,12 +174,19 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
     res.send(pdfBuffer);
   } catch (error) {
     console.error('❌ Error generating invoice:', error);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
     console.error('❌ Error stack:', error.stack);
     if (!res.headersSent) {
+      // Always show error message for debugging (can be removed in production later)
       res.status(500).json({
         success: false,
         message: 'Error generating invoice',
-        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        error: error.message || 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? {
+          name: error.name,
+          stack: error.stack
+        } : undefined
       });
     }
   }

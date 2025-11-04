@@ -1130,11 +1130,15 @@ class PDFService {
       const html = this.getBaseTemplate(title, content);
       console.log('📄 PDFService: HTML template generated, length:', html.length);
       
+      // Use 'domcontentloaded' instead of 'networkidle0' for faster, more reliable loading
       await page.setContent(html, { 
-        waitUntil: 'networkidle0',
-        timeout: 60000 
+        waitUntil: 'domcontentloaded',
+        timeout: 30000 
       });
       console.log('📄 PDFService: Page content set, generating PDF...');
+      
+      // Wait a bit for any CSS/JS to render (using promise-based delay)
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const pdfBuffer = await page.pdf({
         format: 'A4',
@@ -1161,13 +1165,30 @@ class PDFService {
         throw new Error('Generated PDF is not valid');
       }
       
-      await page.close();
-      // Don't close browser here - keep it for reuse
+      // Close page and browser for cleanup (important in serverless)
+      try {
+        await page.close();
+      } catch (closeError) {
+        console.warn('⚠️ PDFService: Error closing page:', closeError.message);
+      }
+      
+      // Close browser to free resources (important in serverless environments)
+      try {
+        if (this.browser) {
+          await this.browser.close();
+          this.browser = null;
+        }
+      } catch (closeError) {
+        console.warn('⚠️ PDFService: Error closing browser:', closeError.message);
+      }
       
       return pdfBuffer;
     } catch (error) {
       console.error('❌ PDFService: Error in PDF generation:', error.message);
+      console.error('❌ PDFService: Error name:', error.name);
       console.error('❌ PDFService: Error stack:', error.stack);
+      
+      // Cleanup on error
       if (page) {
         try {
           await page.close();
@@ -1175,6 +1196,16 @@ class PDFService {
           console.error('⚠️ PDFService: Error closing page:', closeError.message);
         }
       }
+      
+      if (this.browser) {
+        try {
+          await this.browser.close();
+          this.browser = null;
+        } catch (closeError) {
+          console.error('⚠️ PDFService: Error closing browser:', closeError.message);
+        }
+      }
+      
       throw new Error(`PDF generation failed: ${error.message}`);
     }
   }
