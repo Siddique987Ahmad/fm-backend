@@ -790,8 +790,14 @@ class PDFReportService {
     // For Vercel/serverless, use Chromium binary with puppeteer-core
     if (chromium && isServerless) {
       try {
+        // Ensure Chromium is properly initialized for serverless
+        chromium.setGraphicsMode(false);
+        
+        // Get the executable path - this will extract Chromium if needed
         const executablePath = await chromium.executablePath();
+        
         launchOptions.executablePath = executablePath;
+        // Use Chromium's recommended args and merge with our additional ones
         launchOptions.args = [
           ...chromium.args,
           '--hide-scrollbars',
@@ -800,11 +806,21 @@ class PDFReportService {
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--single-process'
+          '--single-process',
+          '--disable-gpu',
+          '--disable-software-rasterizer',
+          '--disable-extensions',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection'
         ];
         console.log('✅ Using Chromium executable for serverless:', executablePath);
+        console.log('✅ Chromium args:', chromium.args);
       } catch (chromiumError) {
         console.error('❌ Error getting Chromium executable path:', chromiumError.message);
+        console.error('❌ Chromium error stack:', chromiumError.stack);
         throw new Error(`Chromium setup failed: ${chromiumError.message}`);
       }
     }

@@ -32,6 +32,14 @@ Make sure these are set in your Vercel project:
 - **Vercel Setup**: 
   - Add: `NODE_ENV` = `production`
 
+### 5. AWS_LAMBDA_JS_RUNTIME (REQUIRED for PDF Generation)
+- **Description**: Node.js runtime version for AWS Lambda (used by Vercel)
+- **Value**: `nodejs22.x` or `nodejs20.x`
+- **Why**: Required to fix Chromium library issues (libnss3.so) in serverless environment
+- **Vercel Setup**: 
+  - Add: `AWS_LAMBDA_JS_RUNTIME` = `nodejs22.x`
+- **Note**: This ensures Chromium has access to necessary system libraries for PDF generation
+
 ## How to Add Environment Variables in Vercel
 
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
@@ -58,6 +66,14 @@ Make sure these are set in your Vercel project:
 
 ### ❌ "JWT_SECRET" errors
 - **Fix**: Add `JWT_SECRET` environment variable in Vercel
+
+### ❌ "PDF generation failed: libnss3.so: cannot open shared object file"
+- **Fix**: 
+  1. Add `AWS_LAMBDA_JS_RUNTIME` = `nodejs22.x` environment variable in Vercel
+  2. Ensure `@sparticuz/chromium` version is `^141.0.0` or later
+  3. Ensure Node.js version is 20.x or 22.x in Vercel settings
+  4. Redeploy the application
+- **Note**: This error occurs when Chromium can't find required system libraries in the serverless environment
 
 ## Verification
 
