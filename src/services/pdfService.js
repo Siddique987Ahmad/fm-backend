@@ -939,14 +939,24 @@ class PDFService {
   // Generate Single Transaction Invoice
   async generateTransactionInvoice(transaction, productType) {
     try {
-      console.log(`📄 PDFService: Generating invoice for transaction ${transaction?._id || 'N/A'}`);
-      
       // Ensure transaction is a plain object
       if (!transaction || typeof transaction !== 'object') {
         throw new Error('Transaction data is invalid or missing');
       }
       
       const txn = transaction;
+      
+      // Log transaction details for debugging
+      console.log(`📄 PDFService: Generating invoice for transaction`, {
+        _id: txn._id,
+        productType: txn.productType,
+        transactionType: txn.transactionType,
+        clientName: txn.clientName,
+        weight: txn.weight,
+        rate: txn.rate,
+        totalBalance: txn.totalBalance,
+        remainingAmount: txn.remainingAmount
+      });
       
       // Handle date conversion - mongoose dates might be strings or Date objects
       let createdAt = null;
@@ -961,10 +971,22 @@ class PDFService {
       }
       
       const productName = this.capitalize(productType.replace('-', ' '));
-      const invoiceNumber = `INV-${txn._id?.toString().slice(-8).toUpperCase() || 'N/A'}`;
+      
+      // Handle _id conversion - could be ObjectId or string
+      let transactionId = 'N/A';
+      if (txn._id) {
+        if (typeof txn._id === 'object' && txn._id.toString) {
+          transactionId = txn._id.toString();
+        } else if (typeof txn._id === 'string') {
+          transactionId = txn._id;
+        } else {
+          transactionId = String(txn._id);
+        }
+      }
+      const invoiceNumber = `INV-${transactionId.slice(-8).toUpperCase()}`;
       const transactionType = txn.transactionType === 'sale' ? 'Sale Invoice' : 'Purchase Invoice';
       
-      // Calculate payment status
+      // Calculate payment status with safe defaults
       const total = Number(txn.totalBalance) || 0;
       const received = Number(txn.remainingAmount) || 0;
       const outstanding = total - received;
@@ -975,6 +997,13 @@ class PDFService {
         paymentStatus = received > total ? 'Advance Payment' : 'Paid';
         paymentStatusClass = received > total ? 'status-advance' : 'status-paid';
       }
+      
+      // Ensure all template variables have safe defaults
+      const safeClientName = txn.clientName || 'N/A';
+      const safeWeight = Number(txn.weight) || 0;
+      const safeRate = Number(txn.rate) || 0;
+      const safeNotes = txn.notes || '';
+      const safeTransactionType = txn.transactionType || 'sale';
       
       const title = `${productName} ${transactionType}`;
       
@@ -989,10 +1018,10 @@ class PDFService {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
           <div>
             <h3 style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
-              ${txn.transactionType === 'sale' ? 'Bill To' : 'Supplier'}
+              ${safeTransactionType === 'sale' ? 'Bill To' : 'Supplier'}
             </h3>
             <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
-              <div style="font-weight: 700; font-size: 16px; color: #2d3748; margin-bottom: 8px;">${txn.clientName || 'N/A'}</div>
+              <div style="font-weight: 700; font-size: 16px; color: #2d3748; margin-bottom: 8px;">${safeClientName}</div>
             </div>
           </div>
           
@@ -1004,7 +1033,7 @@ class PDFService {
               <div><strong>Invoice #:</strong> ${invoiceNumber}</div>
               <div><strong>Date:</strong> ${createdAt ? createdAt.toLocaleDateString('en-PK') : 'N/A'}</div>
               <div><strong>Product:</strong> ${productName}</div>
-              <div><strong>Transaction Type:</strong> ${this.capitalize(txn.transactionType || 'N/A')}</div>
+              <div><strong>Transaction Type:</strong> ${this.capitalize(safeTransactionType)}</div>
             </div>
           </div>
         </div>
@@ -1024,12 +1053,12 @@ class PDFService {
             <tr>
               <td>
                 <div style="font-weight: 600; font-size: 14px; color: #2d3748; margin-bottom: 4px;">
-                  ${productName} - ${txn.transactionType === 'sale' ? 'Sale' : 'Purchase'}
+                  ${productName} - ${safeTransactionType === 'sale' ? 'Sale' : 'Purchase'}
                 </div>
-                ${txn.notes ? `<div style="font-size: 12px; color: #718096; margin-top: 4px;">${txn.notes}</div>` : ''}
+                ${safeNotes ? `<div style="font-size: 12px; color: #718096; margin-top: 4px;">${safeNotes}</div>` : ''}
               </td>
-              <td style="text-align: right; font-weight: 600;">${(Number(txn.weight) || 0).toFixed(2)} kg</td>
-              <td style="text-align: right; font-weight: 600;">PKR ${(Number(txn.rate) || 0).toLocaleString()}/kg</td>
+              <td style="text-align: right; font-weight: 600;">${safeWeight.toFixed(2)} kg</td>
+              <td style="text-align: right; font-weight: 600;">PKR ${safeRate.toLocaleString()}/kg</td>
               <td style="text-align: right; font-weight: 700; font-size: 15px; color: #2d3748;">PKR ${total.toLocaleString()}</td>
             </tr>
           </tbody>
@@ -1044,13 +1073,13 @@ class PDFService {
               </tr>
               <tr>
                 <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #4a5568;">
-                  ${txn.transactionType === 'sale' ? 'Amount Received' : 'Amount Paid'}:
+                  ${safeTransactionType === 'sale' ? 'Amount Received' : 'Amount Paid'}:
                 </td>
                 <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #38a169;">PKR ${received.toLocaleString()}</td>
               </tr>
               <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                 <td style="padding: 15px; font-weight: 700; color: white; font-size: 16px;">
-                  ${txn.transactionType === 'sale' ? 'Outstanding Amount' : 'Remaining Amount'}:
+                  ${safeTransactionType === 'sale' ? 'Outstanding Amount' : 'Remaining Amount'}:
                 </td>
                 <td style="padding: 15px; text-align: right; font-weight: 800; color: white; font-size: 18px;">
                   PKR ${outstanding.toLocaleString()}
@@ -1069,7 +1098,7 @@ class PDFService {
             </div>
             <div style="font-size: 14px; color: #4a5568;">
               ${outstanding > 0 
-                ? `Payment of PKR ${outstanding.toLocaleString()} is ${txn.transactionType === 'sale' ? 'pending' : 'remaining'}.`
+                ? `Payment of PKR ${outstanding.toLocaleString()} is ${safeTransactionType === 'sale' ? 'pending' : 'remaining'}.`
                 : outstanding < 0 
                   ? `Advance payment of PKR ${Math.abs(outstanding).toLocaleString()}.`
                   : 'Payment completed in full.'
