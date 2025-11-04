@@ -4,7 +4,10 @@
    {
     "src": "server.js",
     "use": "@vercel/node",
-    "config": { "includeFiles": ["dist/**"] }
+    "config": { 
+      "includeFiles": ["dist/**"],
+      "maxLambdaSize": "50mb"
+    }
    }
   ],
   "routes": [
@@ -12,5 +15,11 @@
     "src": "/(.*)",
     "dest": "server.js"
    }
-  ]
+  ],
+  "functions": {
+    "server.js": {
+      "maxDuration": 60,
+      "memory": 3008
+    }
+  }
  }

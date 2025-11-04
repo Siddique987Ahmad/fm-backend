@@ -1,18 +1,24 @@
-const puppeteer = require('puppeteer');
 const path = require('path');
 const fs = require('fs');
 
-// For Vercel/serverless environments, use Chromium binary
+// For Vercel/serverless environments, use puppeteer-core with Chromium binary
+let puppeteer;
 let chromium;
-if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
+if (isServerless) {
   try {
     chromium = require('@sparticuz/chromium');
-    // Set Chromium path for serverless
+    puppeteer = require('puppeteer-core');
+    // Configure Chromium for serverless
     chromium.setGraphicsMode(false);
-    console.log('✅ Using @sparticuz/chromium for serverless environment');
+    console.log('✅ Using puppeteer-core with @sparticuz/chromium for serverless environment');
   } catch (e) {
-    console.warn('⚠️ @sparticuz/chromium not found, using default Puppeteer:', e.message);
+    console.warn('⚠️ Serverless dependencies not found, using default Puppeteer:', e.message);
+    puppeteer = require('puppeteer');
   }
+} else {
+  puppeteer = require('puppeteer');
 }
 
 class PDFReportService {
@@ -770,11 +776,19 @@ class PDFReportService {
     // Configure Puppeteer for serverless environments
     const launchOptions = {
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--single-process'
+      ]
     };
     
-    // For Vercel/serverless, use Chromium binary
-    if (chromium && (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)) {
+    // For Vercel/serverless, use Chromium binary with puppeteer-core
+    if (chromium && isServerless) {
       try {
         const executablePath = await chromium.executablePath();
         launchOptions.executablePath = executablePath;
@@ -782,21 +796,30 @@ class PDFReportService {
           ...chromium.args,
           '--hide-scrollbars',
           '--disable-web-security',
-          '--disable-features=IsolateOrigins,site-per-process'
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--single-process'
         ];
-        console.log('✅ Using Chromium executable:', executablePath);
+        console.log('✅ Using Chromium executable for serverless:', executablePath);
       } catch (chromiumError) {
         console.error('❌ Error getting Chromium executable path:', chromiumError.message);
-        // Fall back to default Puppeteer
-        console.log('⚠️ Falling back to default Puppeteer configuration');
+        throw new Error(`Chromium setup failed: ${chromiumError.message}`);
       }
     }
     
     let browser;
     try {
+      console.log('🚀 Launching browser with options:', JSON.stringify(launchOptions, null, 2));
       browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+      
+      // Set longer timeouts for serverless
+      await page.setDefaultNavigationTimeout(60000);
+      await page.setDefaultTimeout(60000);
+      
+      await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
       
       const filePath = path.join(this.outputDir, filename);
       
@@ -812,13 +835,19 @@ class PDFReportService {
         }
       });
       
+      console.log('✅ PDF generated successfully at:', filePath);
       return filePath;
     } catch (error) {
       console.error('❌ Error in PDF generation:', error.message);
+      console.error('❌ Error stack:', error.stack);
       throw new Error(`PDF generation failed: ${error.message}`);
     } finally {
       if (browser) {
-        await browser.close();
+        try {
+          await browser.close();
+        } catch (closeError) {
+          console.error('⚠️ Error closing browser:', closeError.message);
+        }
       }
     }
   }
