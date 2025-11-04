@@ -936,6 +936,140 @@ class PDFService {
     }
   }
 
+  // Generate Single Transaction Invoice
+  async generateTransactionInvoice(transaction, productType) {
+    try {
+      console.log(`📄 PDFService: Generating invoice for transaction ${transaction._id}`);
+      
+      // Ensure transaction is a plain object
+      const txn = transaction && typeof transaction === 'object' ? transaction : {};
+      const createdAt = txn.createdAt ? (txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)) : null;
+      
+      const productName = this.capitalize(productType.replace('-', ' '));
+      const invoiceNumber = `INV-${txn._id?.toString().slice(-8).toUpperCase() || 'N/A'}`;
+      const transactionType = txn.transactionType === 'sale' ? 'Sale Invoice' : 'Purchase Invoice';
+      
+      // Calculate payment status
+      const total = Number(txn.totalBalance) || 0;
+      const received = Number(txn.remainingAmount) || 0;
+      const outstanding = total - received;
+      let paymentStatus = 'Pending';
+      let paymentStatusClass = 'status-pending';
+      
+      if (received >= total) {
+        paymentStatus = received > total ? 'Advance Payment' : 'Paid';
+        paymentStatusClass = received > total ? 'status-advance' : 'status-paid';
+      }
+      
+      const title = `${productName} ${transactionType}`;
+      
+      const content = `
+        <div class="header">
+          <div class="company-logo">Al Hamad Oil Factory</div>
+          <div class="report-title">${transactionType}</div>
+          <div class="report-subtitle">Invoice #${invoiceNumber}</div>
+          <div class="generation-date">Generated on ${new Date().toLocaleString('en-PK')}</div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
+              ${txn.transactionType === 'sale' ? 'Bill To' : 'Supplier'}
+            </h3>
+            <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
+              <div style="font-weight: 700; font-size: 16px; color: #2d3748; margin-bottom: 8px;">${txn.clientName || 'N/A'}</div>
+            </div>
+          </div>
+          
+          <div>
+            <h3 style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
+              Invoice Details
+            </h3>
+            <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
+              <div><strong>Invoice #:</strong> ${invoiceNumber}</div>
+              <div><strong>Date:</strong> ${createdAt ? createdAt.toLocaleDateString('en-PK') : 'N/A'}</div>
+              <div><strong>Product:</strong> ${productName}</div>
+              <div><strong>Transaction Type:</strong> ${this.capitalize(txn.transactionType || 'N/A')}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="section-title">Transaction Details</div>
+        
+        <table class="data-table" style="margin-bottom: 30px;">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="text-align: right;">Quantity</th>
+              <th style="text-align: right;">Rate</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div style="font-weight: 600; font-size: 14px; color: #2d3748; margin-bottom: 4px;">
+                  ${productName} - ${txn.transactionType === 'sale' ? 'Sale' : 'Purchase'}
+                </div>
+                ${txn.notes ? `<div style="font-size: 12px; color: #718096; margin-top: 4px;">${txn.notes}</div>` : ''}
+              </td>
+              <td style="text-align: right; font-weight: 600;">${(Number(txn.weight) || 0).toFixed(2)} kg</td>
+              <td style="text-align: right; font-weight: 600;">PKR ${(Number(txn.rate) || 0).toLocaleString()}/kg</td>
+              <td style="text-align: right; font-weight: 700; font-size: 15px; color: #2d3748;">PKR ${total.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
+          <div style="width: 350px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #4a5568;">Subtotal:</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; font-size: 15px;">PKR ${total.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #4a5568;">
+                  ${txn.transactionType === 'sale' ? 'Amount Received' : 'Amount Paid'}:
+                </td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #38a169;">PKR ${received.toLocaleString()}</td>
+              </tr>
+              <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <td style="padding: 15px; font-weight: 700; color: white; font-size: 16px;">
+                  ${txn.transactionType === 'sale' ? 'Outstanding Amount' : 'Remaining Amount'}:
+                </td>
+                <td style="padding: 15px; text-align: right; font-weight: 800; color: white; font-size: 18px;">
+                  PKR ${outstanding.toLocaleString()}
+                </td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        
+        <div style="margin-top: 40px; padding: 20px; background: #f7fafc; border-radius: 12px; border-left: 4px solid #667eea;">
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <div>
+              <span class="status-badge ${paymentStatusClass}" style="font-size: 13px; padding: 8px 16px;">
+                ${paymentStatus}
+              </span>
+            </div>
+            <div style="font-size: 14px; color: #4a5568;">
+              ${outstanding > 0 
+                ? `Payment of PKR ${outstanding.toLocaleString()} is ${txn.transactionType === 'sale' ? 'pending' : 'remaining'}.`
+                : outstanding < 0 
+                  ? `Advance payment of PKR ${Math.abs(outstanding).toLocaleString()}.`
+                  : 'Payment completed in full.'
+              }
+            </div>
+          </div>
+        </div>
+      `;
+
+      return this.generatePDF(title, content);
+    } catch (error) {
+      throw new Error(`Error generating transaction invoice: ${error.message}`);
+    }
+  }
+
   // Core PDF generation method
   async generatePDF(title, content) {
     let browser;

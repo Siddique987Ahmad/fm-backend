@@ -143,4 +143,42 @@ router.put('/:productType/:id', protect, checkPermission('update_product'), upda
 // @access  Private (delete_product permission required)
 router.delete('/:productType/:id', protect, checkPermission('delete_product'), deleteTransaction);
 
+// @route   GET /api/products/:productType/:id/invoice
+// @desc    Generate invoice PDF for single transaction
+// @access  Private (read_product permission required)
+router.get('/:productType/:id/invoice', protect, checkPermission('read_product'), async (req, res) => {
+  try {
+    const { productType, id } = req.params;
+    
+    // Find the transaction
+    const transaction = await Product.findOne({ _id: id, productType });
+    
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+    
+    // Generate PDF invoice
+    const pdfService = require('../services/pdfService');
+    const pdfBuffer = await pdfService.generateTransactionInvoice(transaction.toObject(), productType);
+    
+    // Set headers and send PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    const invoiceNumber = `INV-${id.toString().slice(-8).toUpperCase()}`;
+    res.setHeader('Content-Disposition', `attachment; filename="${productType}-invoice-${invoiceNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating invoice:', error);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Error generating invoice',
+        error: error.message
+      });
+    }
+  }
+});
+
 module.exports = router;
