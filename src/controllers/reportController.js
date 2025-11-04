@@ -535,13 +535,21 @@ exports.generatePDFReport = asyncHandler(async (req, res, next) => {
 
   } catch (error) {
     console.error('Error generating PDF:', error);
+    // Ensure error message is safe for JSON (remove any control characters)
+    const errorMessage = error.message 
+      ? String(error.message).replace(/[\x00-\x1F\x7F]/g, '').substring(0, 500)
+      : 'Unknown error occurred';
+    
     // Ensure we haven't already sent a response
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
         message: 'Error generating PDF report',
-        error: error.message || 'Unknown error occurred'
+        error: errorMessage
       });
+    } else {
+      // Headers already sent, log the error
+      console.error('Headers already sent, could not send error response:', errorMessage);
     }
   }
 });
