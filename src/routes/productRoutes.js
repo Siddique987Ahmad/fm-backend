@@ -136,19 +136,36 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
   try {
     const { productType, id } = req.params;
     
-    // Find the transaction
-    const transaction = await Product.findOne({ _id: id, productType });
+    console.log(`📄 Invoice Request: productType=${productType}, id=${id}`);
+    
+    // Find the transaction using .lean() to get a plain JavaScript object
+    const transaction = await Product.findOne({ _id: id, productType }).lean();
     
     if (!transaction) {
+      console.log(`❌ Transaction not found: ${id} for productType: ${productType}`);
       return res.status(404).json({
         success: false,
         message: 'Transaction not found'
       });
     }
     
+    console.log(`✅ Transaction found:`, {
+      _id: transaction._id,
+      productType: transaction.productType,
+      clientName: transaction.clientName,
+      totalBalance: transaction.totalBalance
+    });
+    
     // Generate PDF invoice
     const pdfService = require('../services/pdfService');
-    const pdfBuffer = await pdfService.generateTransactionInvoice(transaction.toObject(), productType);
+    console.log('📄 Starting PDF generation...');
+    const pdfBuffer = await pdfService.generateTransactionInvoice(transaction, productType);
+    
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('PDF buffer is empty');
+    }
+    
+    console.log(`✅ PDF generated successfully, size: ${pdfBuffer.length} bytes`);
     
     // Set headers and send PDF
     res.setHeader('Content-Type', 'application/pdf');
@@ -156,12 +173,13 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
     res.setHeader('Content-Disposition', `attachment; filename="${productType}-invoice-${invoiceNumber}.pdf"`);
     res.send(pdfBuffer);
   } catch (error) {
-    console.error('Error generating invoice:', error);
+    console.error('❌ Error generating invoice:', error);
+    console.error('❌ Error stack:', error.stack);
     if (!res.headersSent) {
       res.status(500).json({
         success: false,
         message: 'Error generating invoice',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       });
     }
   }

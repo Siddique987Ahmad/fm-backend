@@ -939,11 +939,26 @@ class PDFService {
   // Generate Single Transaction Invoice
   async generateTransactionInvoice(transaction, productType) {
     try {
-      console.log(`📄 PDFService: Generating invoice for transaction ${transaction._id}`);
+      console.log(`📄 PDFService: Generating invoice for transaction ${transaction?._id || 'N/A'}`);
       
       // Ensure transaction is a plain object
-      const txn = transaction && typeof transaction === 'object' ? transaction : {};
-      const createdAt = txn.createdAt ? (txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)) : null;
+      if (!transaction || typeof transaction !== 'object') {
+        throw new Error('Transaction data is invalid or missing');
+      }
+      
+      const txn = transaction;
+      
+      // Handle date conversion - mongoose dates might be strings or Date objects
+      let createdAt = null;
+      if (txn.createdAt) {
+        if (txn.createdAt instanceof Date) {
+          createdAt = txn.createdAt;
+        } else if (typeof txn.createdAt === 'string') {
+          createdAt = new Date(txn.createdAt);
+        } else {
+          createdAt = new Date(txn.createdAt);
+        }
+      }
       
       const productName = this.capitalize(productType.replace('-', ' '));
       const invoiceNumber = `INV-${txn._id?.toString().slice(-8).toUpperCase() || 'N/A'}`;
