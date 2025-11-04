@@ -128,24 +128,10 @@ router.post('/:productType', protect, checkPermission('create_product'), createT
 // @access  Private (read_product permission required)
 router.get('/:productType', protect, checkPermission('read_product'), getAllTransactions);
 
-// @route   GET /api/products/:productType/:id
-// @desc    Get single product transaction by ID
-// @access  Private (read_product permission required)
-router.get('/:productType/:id', protect, checkPermission('read_product'), getTransactionById);
-
-// @route   PUT /api/products/:productType/:id
-// @desc    Update product transaction
-// @access  Private (update_product permission required)
-router.put('/:productType/:id', protect, checkPermission('update_product'), updateTransaction);
-
-// @route   DELETE /api/products/:productType/:id
-// @desc    Delete product transaction
-// @access  Private (delete_product permission required)
-router.delete('/:productType/:id', protect, checkPermission('delete_product'), deleteTransaction);
-
 // @route   GET /api/products/:productType/:id/invoice
 // @desc    Generate invoice PDF for single transaction
 // @access  Private (read_product permission required)
+// NOTE: This must come BEFORE /:productType/:id route to avoid route matching conflicts
 router.get('/:productType/:id/invoice', protect, checkPermission('read_product'), async (req, res) => {
   try {
     const { productType, id } = req.params;
@@ -180,5 +166,20 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
     }
   }
 });
+
+// @route   GET /api/products/:productType/:id
+// @desc    Get single product transaction by ID
+// @access  Private (read_product permission required)
+router.get('/:productType/:id', protect, checkPermission('read_product'), getTransactionById);
+
+// @route   PUT /api/products/:productType/:id
+// @desc    Update product transaction
+// @access  Private (update_product permission required)
+router.put('/:productType/:id', protect, checkPermission('update_product'), updateTransaction);
+
+// @route   DELETE /api/products/:productType/:id
+// @desc    Delete product transaction
+// @access  Private (delete_product permission required)
+router.delete('/:productType/:id', protect, checkPermission('delete_product'), deleteTransaction);
 
 module.exports = router;
