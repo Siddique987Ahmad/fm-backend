@@ -300,6 +300,127 @@ router.get('/products/:id',
   getProductById
 );
 
+// Admin routes to update/delete individual transactions (purchase/sale) by ID
+// These act as convenience endpoints for the admin dashboard which references
+// /api/admin/purchases/:id and /api/admin/sales/:id
+const Product = require('../models/Product');
+
+// @route   PUT /api/admin/purchases/:id
+// @desc    Update a purchase transaction by ID
+// @access  Private (update_product permission required)
+router.put('/purchases/:id',
+  protect,
+  checkPermission('update_product'),
+  async (req, res) => {
+    try {
+      const transaction = await Product.findById(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+      if (transaction.transactionType !== 'purchase') {
+        return res.status(400).json({ success: false, message: 'Transaction is not a purchase' });
+      }
+
+      // Update allowed fields
+      const allowed = ['clientName','weight','rate','remainingAmount','totalBalance','notes','paymentStatus'];
+      allowed.forEach(key => {
+        if (req.body[key] !== undefined) {
+          transaction[key] = req.body[key];
+        }
+      });
+
+      const updated = await transaction.save();
+      return res.status(200).json({ success: true, message: 'Purchase updated', data: updated });
+    } catch (error) {
+      console.error('Error updating purchase:', error);
+      return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+    }
+  }
+);
+
+// @route   DELETE /api/admin/purchases/:id
+// @desc    Delete a purchase transaction by ID
+// @access  Private (delete_product permission required)
+router.delete('/purchases/:id',
+  protect,
+  checkPermission('delete_product'),
+  async (req, res) => {
+    try {
+      const transaction = await Product.findById(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+      if (transaction.transactionType !== 'purchase') {
+        return res.status(400).json({ success: false, message: 'Transaction is not a purchase' });
+      }
+
+      await Product.findByIdAndDelete(req.params.id);
+      return res.status(200).json({ success: true, message: 'Purchase deleted' });
+    } catch (error) {
+      console.error('Error deleting purchase:', error);
+      return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+    }
+  }
+);
+
+// @route   PUT /api/admin/sales/:id
+// @desc    Update a sale transaction by ID
+// @access  Private (update_product permission required)
+router.put('/sales/:id',
+  protect,
+  checkPermission('update_product'),
+  async (req, res) => {
+    try {
+      const transaction = await Product.findById(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+      if (transaction.transactionType !== 'sale') {
+        return res.status(400).json({ success: false, message: 'Transaction is not a sale' });
+      }
+
+      // Update allowed fields
+      const allowed = ['clientName','weight','rate','remainingAmount','totalBalance','notes','paymentStatus'];
+      allowed.forEach(key => {
+        if (req.body[key] !== undefined) {
+          transaction[key] = req.body[key];
+        }
+      });
+
+      const updated = await transaction.save();
+      return res.status(200).json({ success: true, message: 'Sale updated', data: updated });
+    } catch (error) {
+      console.error('Error updating sale:', error);
+      return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+    }
+  }
+);
+
+// @route   DELETE /api/admin/sales/:id
+// @desc    Delete a sale transaction by ID
+// @access  Private (delete_product permission required)
+router.delete('/sales/:id',
+  protect,
+  checkPermission('delete_product'),
+  async (req, res) => {
+    try {
+      const transaction = await Product.findById(req.params.id);
+      if (!transaction) {
+        return res.status(404).json({ success: false, message: 'Transaction not found' });
+      }
+      if (transaction.transactionType !== 'sale') {
+        return res.status(400).json({ success: false, message: 'Transaction is not a sale' });
+      }
+
+      await Product.findByIdAndDelete(req.params.id);
+      return res.status(200).json({ success: true, message: 'Sale deleted' });
+    } catch (error) {
+      console.error('Error deleting sale:', error);
+      return res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+    }
+  }
+);
+
 // @route   POST /api/admin/products
 // @desc    Create new product
 // @access  Private (Admin)
