@@ -35,21 +35,21 @@
 //   // Add company header
 //   addHeader(title, subtitle = null) {
 //     const doc = this.doc;
-    
+
 //     // Company name
 //     doc.fontSize(20)
 //        .font('Helvetica-Bold')
 //        .text('Al Hamad Oil Factory', this.margin, this.currentY, { align: 'center' });
-    
+
 //     this.currentY += 30;
-    
+
 //     // Report title
 //     doc.fontSize(16)
 //        .font('Helvetica-Bold')
 //        .text(title, this.margin, this.currentY, { align: 'center' });
-    
+
 //     this.currentY += 25;
-    
+
 //     // Subtitle if provided
 //     if (subtitle) {
 //       doc.fontSize(12)
@@ -57,19 +57,19 @@
 //          .text(subtitle, this.margin, this.currentY, { align: 'center' });
 //       this.currentY += 20;
 //     }
-    
+
 //     // Date and time
 //     doc.fontSize(10)
 //        .font('Helvetica')
 //        .text(`Generated on: ${new Date().toLocaleString('en-PK')}`, this.margin, this.currentY, { align: 'center' });
-    
+
 //     this.currentY += 30;
-    
+
 //     // Add line separator
 //     doc.moveTo(this.margin, this.currentY)
 //        .lineTo(this.pageWidth - this.margin, this.currentY)
 //        .stroke();
-    
+
 //     this.currentY += 20;
 //   }
 
@@ -79,34 +79,34 @@
 //     const boxWidth = (this.contentWidth - 30) / 4; // 4 columns with spacing
 //     const boxHeight = 60;
 //     const startX = this.margin;
-    
+
 //     doc.fontSize(12).font('Helvetica-Bold').text('Summary Statistics', startX, this.currentY);
 //     this.currentY += 25;
-    
+
 //     const statBoxes = [
 //       { label: 'Total Records', value: stats.totalRecords || 0, color: '#3B82F6' },
 //       { label: 'Total Amount', value: `Rs.${(stats.totalAmount || 0).toLocaleString()}`, color: '#10B981' },
 //       { label: 'Paid Amount', value: `Rs.${(stats.paidAmount || 0).toLocaleString()}`, color: '#06B6D4' },
 //       { label: 'Pending Amount', value: `Rs.${(stats.pendingAmount || 0).toLocaleString()}`, color: '#F59E0B' }
 //     ];
-    
+
 //     statBoxes.forEach((stat, index) => {
 //       const x = startX + (index * (boxWidth + 10));
-      
+
 //       // Draw box
 //       doc.rect(x, this.currentY, boxWidth, boxHeight).stroke();
-      
+
 //       // Add label
 //       doc.fontSize(8)
 //          .font('Helvetica')
 //          .text(stat.label, x + 5, this.currentY + 5, { width: boxWidth - 10, align: 'center' });
-      
+
 //       // Add value
 //       doc.fontSize(14)
 //          .font('Helvetica-Bold')
 //          .text(stat.value, x + 5, this.currentY + 25, { width: boxWidth - 10, align: 'center' });
 //     });
-    
+
 //     this.currentY += boxHeight + 30;
 //   }
 
@@ -118,20 +118,20 @@
 //     const headerHeight = options.headerHeight || 30;
 //     const fontSize = options.fontSize || 8;
 //     const headerFontSize = options.headerFontSize || 9;
-    
+
 //     // Calculate column widths
 //     const totalWidth = this.contentWidth - 20;
 //     const columnWidth = totalWidth / headers.length;
-    
+
 //     // Check if we need a new page
 //     if (this.currentY + headerHeight + (rows.length * itemHeight) > this.pageHeight - this.margin) {
 //       doc.addPage();
 //       this.currentY = this.margin;
 //     }
-    
+
 //     // Draw table header
 //     doc.rect(this.margin, this.currentY, this.contentWidth, headerHeight).fill('#f3f4f6').stroke();
-    
+
 //     headers.forEach((header, index) => {
 //       const x = this.margin + (index * columnWidth) + 5;
 //       doc.fillColor('#000000')
@@ -139,21 +139,21 @@
 //          .font('Helvetica-Bold')
 //          .text(header, x, this.currentY + 8, { width: columnWidth - 10, ellipsis: true });
 //     });
-    
+
 //     this.currentY += headerHeight;
-    
+
 //     // Draw table rows
 //     rows.forEach((row, rowIndex) => {
 //       const isEven = rowIndex % 2 === 0;
 //       const rowY = this.currentY;
-      
+
 //       // Alternate row colors
 //       if (!isEven) {
 //         doc.rect(this.margin, rowY, this.contentWidth, itemHeight).fill('#f9fafb').stroke();
 //       } else {
 //         doc.rect(this.margin, rowY, this.contentWidth, itemHeight).stroke();
 //       }
-      
+
 //       // Add row data
 //       row.forEach((cell, cellIndex) => {
 //         const x = this.margin + (cellIndex * columnWidth) + 5;
@@ -166,14 +166,14 @@
 //              height: itemHeight - 12
 //            });
 //       });
-      
+
 //       this.currentY += itemHeight;
-      
+
 //       // Check if we need a new page
 //       if (this.currentY > this.pageHeight - this.margin - 50) {
 //         doc.addPage();
 //         this.currentY = this.margin;
-        
+
 //         // Redraw headers on new page
 //         doc.rect(this.margin, this.currentY, this.contentWidth, headerHeight).fill('#f3f4f6').stroke();
 //         headers.forEach((header, index) => {
@@ -186,7 +186,7 @@
 //         this.currentY += headerHeight;
 //       }
 //     });
-    
+
 //     this.currentY += 20;
 //   }
 
@@ -194,20 +194,20 @@
 //   addFooter() {
 //     const doc = this.doc;
 //     const pageCount = doc.bufferedPageRange().count;
-    
+
 //     for (let i = 0; i < pageCount; i++) {
 //       doc.switchToPage(i);
-      
+
 //       // Add line
 //       doc.moveTo(this.margin, this.pageHeight - 40)
 //          .lineTo(this.pageWidth - this.margin, this.pageHeight - 40)
 //          .stroke();
-      
+
 //       // Add footer text
 //       doc.fontSize(8)
 //          .font('Helvetica')
 //          .text('Al Hamad Oil Factory Management System', this.margin, this.pageHeight - 30, { align: 'left' });
-      
+
 //       doc.text(`Page ${i + 1} of ${pageCount}`, this.margin, this.pageHeight - 30, { align: 'right' });
 //     }
 //   }
@@ -217,10 +217,10 @@
 //     try {
 //       const title = `Expense Report${filters.category ? ` - ${filters.category.toUpperCase()}` : ''}`;
 //       const subtitle = this.getFilterSubtitle(filters);
-      
+
 //       this.initDocument(title);
 //       this.addHeader(title, subtitle);
-      
+
 //       // Add summary statistics
 //       const stats = {
 //         totalRecords: expenses.length,
@@ -229,7 +229,7 @@
 //         pendingAmount: summary.pendingAmount || 0
 //       };
 //       this.addSummaryStats(stats);
-      
+
 //       // Prepare table data
 //       const headers = ['Date', 'Category', 'Title', 'Amount', 'Paid', 'Status', 'Outstanding'];
 //       const rows = expenses.map(expense => [
@@ -241,10 +241,10 @@
 //         this.capitalize(expense.paymentStatus),
 //         `Rs.${expense.outstandingAmount.toLocaleString()}`
 //       ]);
-      
+
 //       this.addTable(headers, rows, { itemHeight: 25, fontSize: 8 });
 //       this.addFooter();
-      
+
 //       return this.doc;
 //     } catch (error) {
 //       throw new Error(`Error generating expense report: ${error.message}`);
@@ -256,10 +256,10 @@
 //     try {
 //       const title = `${this.capitalize(productType.replace('-', ' '))} Transaction Report`;
 //       const subtitle = this.getFilterSubtitle(filters);
-      
+
 //       this.initDocument(title);
 //       this.addHeader(title, subtitle);
-      
+
 //       // Add summary statistics
 //       const stats = {
 //         totalRecords: transactions.length,
@@ -268,7 +268,7 @@
 //         pendingAmount: summary.totalOutstanding || 0
 //       };
 //       this.addSummaryStats(stats);
-      
+
 //       // Prepare table data
 //       const headers = ['Date', 'Type', 'Client/Supplier', 'Weight (kg)', 'Rate', 'Total', 'Received/Paid', 'Status'];
 //       const rows = transactions.map(transaction => [
@@ -281,10 +281,10 @@
 //         `Rs.${transaction.remainingAmount.toLocaleString()}`,
 //         this.getPaymentStatus(transaction)
 //       ]);
-      
+
 //       this.addTable(headers, rows, { itemHeight: 25, fontSize: 8 });
 //       this.addFooter();
-      
+
 //       return this.doc;
 //     } catch (error) {
 //       throw new Error(`Error generating product report: ${error.message}`);
@@ -295,7 +295,7 @@
 //   getPaymentStatus(transaction) {
 //     const total = transaction.totalBalance;
 //     const received = transaction.remainingAmount;
-    
+
 //     if (received >= total) {
 //       return received > total ? 'Advance' : 'Paid';
 //     } else {
@@ -312,7 +312,7 @@
 //   // Helper method to generate filter subtitle
 //   getFilterSubtitle(filters) {
 //     const parts = [];
-    
+
 //     if (filters.startDate && filters.endDate) {
 //       parts.push(`Period: ${new Date(filters.startDate).toLocaleDateString('en-PK')} - ${new Date(filters.endDate).toLocaleDateString('en-PK')}`);
 //     } else if (filters.startDate) {
@@ -320,15 +320,15 @@
 //     } else if (filters.endDate) {
 //       parts.push(`Until: ${new Date(filters.endDate).toLocaleDateString('en-PK')}`);
 //     }
-    
+
 //     if (filters.transactionType) {
 //       parts.push(`Type: ${this.capitalize(filters.transactionType)}`);
 //     }
-    
+
 //     if (filters.paymentStatus) {
 //       parts.push(`Status: ${this.capitalize(filters.paymentStatus)}`);
 //     }
-    
+
 //     return parts.length > 0 ? parts.join(' | ') : null;
 //   }
 
@@ -339,7 +339,7 @@
 //         const stream = fs.createWriteStream(filename);
 //         this.doc.pipe(stream);
 //         this.doc.end();
-        
+
 //         stream.on('finish', () => resolve(filename));
 //         stream.on('error', reject);
 //       } catch (error) {
@@ -415,13 +415,13 @@ class PDFService {
           '--single-process'
         ]
       };
-      
+
       // For Vercel/serverless, use Chromium binary with puppeteer-core
       if (chromium && isServerless) {
         try {
           const executablePath = await chromium.executablePath();
           launchOptions.executablePath = executablePath;
-          
+
           // Use Chromium's recommended args, merge with our additional ones
           const chromiumArgs = chromium.args || [];
           launchOptions.args = [
@@ -450,7 +450,7 @@ class PDFService {
           throw new Error(`Chromium setup failed: ${chromiumError.message}`);
         }
       }
-      
+
       this.browser = await puppeteer.launch(launchOptions);
     }
     return this.browser;
@@ -464,7 +464,7 @@ class PDFService {
     }
   }
 
-  // Generate base HTML template with modern styling
+  // Generate base HTML template with simple, clean styling
   getBaseTemplate(title, content) {
     return `
     <!DOCTYPE html>
@@ -481,11 +481,10 @@ class PDFService {
         }
         
         body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          font-family: 'Arial', 'Helvetica', sans-serif;
           line-height: 1.6;
           color: #333;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          min-height: 100vh;
+          background: white;
         }
         
         .page {
@@ -493,218 +492,160 @@ class PDFService {
           margin: 0;
           padding: 40px;
           min-height: 100vh;
-          position: relative;
         }
         
         .header {
           text-align: center;
-          margin-bottom: 40px;
-          padding-bottom: 30px;
-          border-bottom: 3px solid #667eea;
-          position: relative;
-        }
-        
-        .header::after {
-          content: '';
-          position: absolute;
-          bottom: -3px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 100px;
-          height: 3px;
-          background: linear-gradient(90deg, #667eea, #764ba2);
-          border-radius: 2px;
+          margin-bottom: 30px;
+          padding-bottom: 20px;
+          border-bottom: 2px solid #333;
         }
         
         .company-logo {
-          font-size: 32px;
-          font-weight: 800;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
+          font-size: 24px;
+          font-weight: bold;
+          color: #000;
           margin-bottom: 10px;
-          letter-spacing: -1px;
         }
         
         .report-title {
-          font-size: 24px;
-          color: #2d3748;
-          font-weight: 700;
-          margin-bottom: 8px;
+          font-size: 20px;
+          color: #333;
+          font-weight: bold;
+          margin-bottom: 5px;
         }
         
         .report-subtitle {
           font-size: 14px;
-          color: #718096;
-          margin-bottom: 15px;
+          color: #666;
+          margin-bottom: 10px;
         }
         
         .generation-date {
-          font-size: 12px;
-          color: #a0aec0;
-          padding: 8px 16px;
-          background: #f7fafc;
-          border-radius: 20px;
-          display: inline-block;
+          font-size: 11px;
+          color: #999;
         }
         
         .stats-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-          gap: 20px;
-          margin-bottom: 40px;
+          gap: 15px;
+          margin-bottom: 30px;
         }
         
         .stat-card {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          padding: 25px;
-          border-radius: 16px;
+          background: #f5f5f5;
+          border: 1px solid #ddd;
+          padding: 20px;
           text-align: center;
-          box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-          transform: translateY(0);
-          transition: transform 0.3s ease;
-        }
-        
-        .stat-card:hover {
-          transform: translateY(-5px);
         }
         
         .stat-label {
-          font-size: 12px;
-          opacity: 0.9;
-          margin-bottom: 8px;
+          font-size: 11px;
+          color: #666;
+          margin-bottom: 5px;
           text-transform: uppercase;
-          letter-spacing: 1px;
-          font-weight: 600;
+          font-weight: bold;
         }
         
         .stat-value {
-          font-size: 28px;
-          font-weight: 800;
-          line-height: 1;
+          font-size: 24px;
+          font-weight: bold;
+          color: #000;
         }
         
         .data-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 40px;
-          background: white;
-          border-radius: 12px;
-          overflow: hidden;
-          box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+          margin-bottom: 30px;
+          border: 1px solid #ddd;
         }
         
         .data-table th {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #333;
           color: white;
-          padding: 18px 15px;
+          padding: 12px 10px;
           text-align: left;
-          font-weight: 700;
-          font-size: 13px;
+          font-weight: bold;
+          font-size: 12px;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
         }
         
         .data-table td {
-          padding: 16px 15px;
-          border-bottom: 1px solid #e2e8f0;
-          font-size: 13px;
+          padding: 12px 10px;
+          border-bottom: 1px solid #ddd;
+          font-size: 12px;
         }
         
         .data-table tr:nth-child(even) {
-          background-color: #f8fafc;
-        }
-        
-        .data-table tr:hover {
-          background-color: #edf2f7;
+          background-color: #f9f9f9;
         }
         
         .status-badge {
-          padding: 4px 12px;
-          border-radius: 20px;
-          font-size: 11px;
-          font-weight: 600;
+          padding: 4px 10px;
+          border-radius: 3px;
+          font-size: 10px;
+          font-weight: bold;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
         }
         
         .status-paid {
           background: #d4edda;
           color: #155724;
+          border: 1px solid #c3e6cb;
         }
         
         .status-pending {
           background: #fff3cd;
           color: #856404;
+          border: 1px solid #ffeaa7;
         }
         
         .status-advance {
-          background: #cce5ff;
-          color: #004085;
+          background: #d1ecf1;
+          color: #0c5460;
+          border: 1px solid #bee5eb;
         }
         
         .amount {
-          font-weight: 700;
-          color: #2d3748;
+          font-weight: bold;
+          color: #000;
         }
         
         .amount.positive {
-          color: #38a169;
+          color: #28a745;
         }
         
         .amount.negative {
-          color: #e53e3e;
+          color: #dc3545;
         }
         
         .footer {
           position: fixed;
-          bottom: 30px;
+          bottom: 20px;
           left: 40px;
           right: 40px;
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          padding-top: 20px;
-          border-top: 1px solid #e2e8f0;
-          font-size: 11px;
-          color: #718096;
-        }
-        
-        .watermark {
-          position: fixed;
-          top: 50%;
-          left: 50%;
-          transform: translate(-50%, -50%) rotate(-45deg);
-          font-size: 120px;
-          color: rgba(102, 126, 234, 0.05);
-          font-weight: 900;
-          z-index: -1;
-          white-space: nowrap;
+          padding-top: 15px;
+          border-top: 1px solid #ddd;
+          font-size: 10px;
+          color: #666;
         }
         
         .section-title {
-          font-size: 18px;
-          font-weight: 700;
-          color: #2d3748;
-          margin-bottom: 20px;
-          padding-bottom: 10px;
-          border-bottom: 2px solid #e2e8f0;
+          font-size: 16px;
+          font-weight: bold;
+          color: #000;
+          margin-bottom: 15px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #ddd;
         }
         
         @media print {
-          body {
-            background: white;
-          }
-          
           .page {
             margin: 0;
             padding: 20px;
-          }
-          
-          .stat-card:hover {
-            transform: none;
           }
         }
         
@@ -718,7 +659,6 @@ class PDFService {
       </style>
     </head>
     <body>
-      <div class="watermark">AL HAMAD OIL</div>
       <div class="page">
         ${content}
       </div>
@@ -737,10 +677,10 @@ class PDFService {
       // Ensure expenses is an array
       const expensesArray = Array.isArray(expenses) ? expenses : [];
       console.log(`📄 PDFService: Generating expense report with ${expensesArray.length} expenses`);
-      
+
       const title = `Expense Report${filters.category ? ` - ${filters.category.toUpperCase()}` : ''}`;
       const subtitle = this.getFilterSubtitle(filters);
-      
+
       // Generate summary stats
       const stats = {
         totalRecords: expensesArray.length,
@@ -748,7 +688,7 @@ class PDFService {
         paidAmount: summary.totalPaid || 0,
         pendingAmount: summary.pendingAmount || 0
       };
-      
+
       console.log(`📄 PDFService: Stats - ${stats.totalRecords} records, Total: Rs.${stats.totalAmount}`);
 
       const content = `
@@ -794,12 +734,12 @@ class PDFService {
           </thead>
           <tbody>
             ${expensesArray && expensesArray.length > 0 ? expensesArray.map(expense => {
-              // Ensure expense is a plain object
-              const exp = expense && typeof expense === 'object' ? expense : {};
-              const outstandingAmount = (Number(exp.amount) || 0) - (Number(exp.amountPaid) || 0);
-              const expenseDate = exp.expenseDate ? (exp.expenseDate instanceof Date ? exp.expenseDate : new Date(exp.expenseDate)) : null;
-              
-              return `
+        // Ensure expense is a plain object
+        const exp = expense && typeof expense === 'object' ? expense : {};
+        const outstandingAmount = (Number(exp.amount) || 0) - (Number(exp.amountPaid) || 0);
+        const expenseDate = exp.expenseDate ? (exp.expenseDate instanceof Date ? exp.expenseDate : new Date(exp.expenseDate)) : null;
+
+        return `
                 <tr>
                   <td>${expenseDate ? expenseDate.toLocaleDateString('en-PK') : 'N/A'}</td>
                   <td>${this.capitalize(exp.expenseCategory || 'N/A')}</td>
@@ -816,7 +756,7 @@ class PDFService {
                   </td>
                 </tr>
               `;
-            }).join('') : `
+      }).join('') : `
               <tr>
                 <td colspan="7" style="text-align: center; padding: 40px; color: #718096;">
                   No expenses found for the selected filters
@@ -839,10 +779,10 @@ class PDFService {
       // Ensure transactions is an array
       const transactionsArray = Array.isArray(transactions) ? transactions : [];
       console.log(`📄 PDFService: Generating product report with ${transactionsArray.length} transactions`);
-      
+
       const title = `${this.capitalize(productType.replace('-', ' '))} Transaction Report`;
       const subtitle = this.getFilterSubtitle(filters);
-      
+
       // Generate summary stats
       const stats = {
         totalRecords: transactionsArray.length,
@@ -850,7 +790,7 @@ class PDFService {
         paidAmount: summary.totalReceived || 0,
         pendingAmount: summary.totalOutstanding || 0
       };
-      
+
       console.log(`📄 PDFService: Stats - ${stats.totalRecords} records, Total: Rs.${stats.totalAmount}`);
 
       const content = `
@@ -897,11 +837,11 @@ class PDFService {
           </thead>
           <tbody>
             ${transactionsArray && transactionsArray.length > 0 ? transactionsArray.map(transaction => {
-              // Ensure transaction is a plain object
-              const txn = transaction && typeof transaction === 'object' ? transaction : {};
-              const createdAt = txn.createdAt ? (txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)) : null;
-              
-              return `
+        // Ensure transaction is a plain object
+        const txn = transaction && typeof transaction === 'object' ? transaction : {};
+        const createdAt = txn.createdAt ? (txn.createdAt instanceof Date ? txn.createdAt : new Date(txn.createdAt)) : null;
+
+        return `
               <tr>
                 <td>${createdAt ? createdAt.toLocaleDateString('en-PK') : 'N/A'}</td>
                 <td>
@@ -921,7 +861,7 @@ class PDFService {
                 </td>
               </tr>
             `;
-            }).join('') : `
+      }).join('') : `
               <tr>
                 <td colspan="8" style="text-align: center; padding: 40px; color: #718096;">
                   No transactions found for the selected filters
@@ -945,9 +885,9 @@ class PDFService {
       if (!transaction || typeof transaction !== 'object') {
         throw new Error('Transaction data is invalid or missing');
       }
-      
+
       const txn = transaction;
-      
+
       // Log transaction details for debugging
       console.log(`📄 PDFService: Generating invoice for transaction`, {
         _id: txn._id,
@@ -959,7 +899,7 @@ class PDFService {
         totalBalance: txn.totalBalance,
         remainingAmount: txn.remainingAmount
       });
-      
+
       // Handle date conversion - mongoose dates might be strings or Date objects
       let createdAt = null;
       if (txn.createdAt) {
@@ -971,9 +911,9 @@ class PDFService {
           createdAt = new Date(txn.createdAt);
         }
       }
-      
+
       const productName = this.capitalize(productType.replace('-', ' '));
-      
+
       // Handle _id conversion - could be ObjectId or string
       let transactionId = 'N/A';
       if (txn._id) {
@@ -987,62 +927,50 @@ class PDFService {
       }
       const invoiceNumber = `INV-${transactionId.slice(-8).toUpperCase()}`;
       const transactionType = txn.transactionType === 'sale' ? 'Sale Invoice' : 'Purchase Invoice';
-      
+
       // Calculate payment status with safe defaults
       const total = Number(txn.totalBalance) || 0;
       const received = Number(txn.remainingAmount) || 0;
       const outstanding = total - received;
       let paymentStatus = 'Pending';
       let paymentStatusClass = 'status-pending';
-      
+
       if (received >= total) {
         paymentStatus = received > total ? 'Advance Payment' : 'Paid';
         paymentStatusClass = received > total ? 'status-advance' : 'status-paid';
       }
-      
+
       // Ensure all template variables have safe defaults
       const safeClientName = txn.clientName || 'N/A';
       const safeWeight = Number(txn.weight) || 0;
       const safeRate = Number(txn.rate) || 0;
       const safeNotes = txn.notes || '';
       const safeTransactionType = txn.transactionType || 'sale';
-      
+
       const title = `${productName} ${transactionType}`;
-      
+
       const content = `
         <div class="header">
           <div class="company-logo">Al Hamad Oil Factory</div>
           <div class="report-title">${transactionType}</div>
           <div class="report-subtitle">Invoice #${invoiceNumber}</div>
-          <div class="generation-date">Generated on ${new Date().toLocaleString('en-PK')}</div>
         </div>
         
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
-          <div>
-            <h3 style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
-              ${safeTransactionType === 'sale' ? 'Bill To' : 'Supplier'}
-            </h3>
-            <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
-              <div style="font-weight: 700; font-size: 16px; color: #2d3748; margin-bottom: 8px;">${safeClientName}</div>
-            </div>
-          </div>
-          
-          <div>
-            <h3 style="font-size: 16px; font-weight: 700; color: #2d3748; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e2e8f0;">
-              Invoice Details
-            </h3>
-            <div style="font-size: 14px; color: #4a5568; line-height: 1.8;">
-              <div><strong>Invoice #:</strong> ${invoiceNumber}</div>
-              <div><strong>Date:</strong> ${createdAt ? createdAt.toLocaleDateString('en-PK') : 'N/A'}</div>
-              <div><strong>Product:</strong> ${productName}</div>
-              <div><strong>Transaction Type:</strong> ${this.capitalize(safeTransactionType)}</div>
-            </div>
-          </div>
-        </div>
+        <table style="width: 100%; margin-bottom: 20px; font-size: 12px;">
+          <tr>
+            <td style="width: 50%; vertical-align: top;">
+              <strong>${safeTransactionType === 'sale' ? 'Bill To:' : 'Supplier:'}</strong><br>
+              ${safeClientName}
+            </td>
+            <td style="width: 50%; vertical-align: top; text-align: right;">
+              <strong>Date:</strong> ${createdAt ? createdAt.toLocaleDateString('en-PK') : 'N/A'}<br>
+              <strong>Product:</strong> ${productName}<br>
+              <strong>Type:</strong> ${this.capitalize(safeTransactionType)}
+            </td>
+          </tr>
+        </table>
         
-        <div class="section-title">Transaction Details</div>
-        
-        <table class="data-table" style="margin-bottom: 30px;">
+        <table class="data-table">
           <thead>
             <tr>
               <th>Description</th>
@@ -1053,60 +981,34 @@ class PDFService {
           </thead>
           <tbody>
             <tr>
-              <td>
-                <div style="font-weight: 600; font-size: 14px; color: #2d3748; margin-bottom: 4px;">
-                  ${productName} - ${safeTransactionType === 'sale' ? 'Sale' : 'Purchase'}
-                </div>
-                ${safeNotes ? `<div style="font-size: 12px; color: #718096; margin-top: 4px;">${safeNotes}</div>` : ''}
-              </td>
-              <td style="text-align: right; font-weight: 600;">${safeWeight.toFixed(2)} kg</td>
-              <td style="text-align: right; font-weight: 600;">PKR ${safeRate.toLocaleString()}/kg</td>
-              <td style="text-align: right; font-weight: 700; font-size: 15px; color: #2d3748;">PKR ${total.toLocaleString()}</td>
+              <td>${productName} - ${safeTransactionType === 'sale' ? 'Sale' : 'Purchase'}</td>
+              <td style="text-align: right;">${safeWeight.toFixed(2)} kg</td>
+              <td style="text-align: right;">PKR ${safeRate.toLocaleString()}/kg</td>
+              <td style="text-align: right;"><strong>PKR ${total.toLocaleString()}</strong></td>
             </tr>
           </tbody>
         </table>
         
-        <div style="display: flex; justify-content: flex-end; margin-bottom: 30px;">
-          <div style="width: 350px;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #4a5568;">Subtotal:</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; font-size: 15px;">PKR ${total.toLocaleString()}</td>
-              </tr>
-              <tr>
-                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-weight: 600; color: #4a5568;">
-                  ${safeTransactionType === 'sale' ? 'Amount Received' : 'Amount Paid'}:
-                </td>
-                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: right; font-weight: 700; color: #38a169;">PKR ${received.toLocaleString()}</td>
-              </tr>
-              <tr style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                <td style="padding: 15px; font-weight: 700; color: white; font-size: 16px;">
-                  ${safeTransactionType === 'sale' ? 'Outstanding Amount' : 'Remaining Amount'}:
-                </td>
-                <td style="padding: 15px; text-align: right; font-weight: 800; color: white; font-size: 18px;">
-                  PKR ${outstanding.toLocaleString()}
-                </td>
-              </tr>
-            </table>
-          </div>
+        <div style="margin-top: 20px; text-align: right;">
+          <table style="width: 300px; margin-left: auto; border-collapse: collapse; font-size: 12px;">
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;">Subtotal:</td>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;"><strong>PKR ${total.toLocaleString()}</strong></td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd;">${safeTransactionType === 'sale' ? 'Amount Received:' : 'Amount Paid:'}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">PKR ${received.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px; background: #f5f5f5; font-weight: bold;">${safeTransactionType === 'sale' ? 'Outstanding:' : 'Remaining:'}</td>
+              <td style="padding: 8px; background: #f5f5f5; text-align: right; font-weight: bold;">PKR ${outstanding.toLocaleString()}</td>
+            </tr>
+          </table>
         </div>
         
-        <div style="margin-top: 40px; padding: 20px; background: #f7fafc; border-radius: 12px; border-left: 4px solid #667eea;">
-          <div style="display: flex; align-items: center; gap: 15px;">
-            <div>
-              <span class="status-badge ${paymentStatusClass}" style="font-size: 13px; padding: 8px 16px;">
-                ${paymentStatus}
-              </span>
-            </div>
-            <div style="font-size: 14px; color: #4a5568;">
-              ${outstanding > 0 
-                ? `Payment of PKR ${outstanding.toLocaleString()} is ${safeTransactionType === 'sale' ? 'pending' : 'remaining'}.`
-                : outstanding < 0 
-                  ? `Advance payment of PKR ${Math.abs(outstanding).toLocaleString()}.`
-                  : 'Payment completed in full.'
-              }
-            </div>
-          </div>
+        <div style="margin-top: 20px; padding: 10px; background: #f9f9f9; border: 1px solid #ddd; font-size: 11px;">
+          <strong>Status:</strong> <span class="status-badge ${paymentStatusClass}">${paymentStatus}</span>
+          ${safeNotes ? `<br><strong>Notes:</strong> ${safeNotes}` : ''}
         </div>
       `;
 
@@ -1124,38 +1026,38 @@ class PDFService {
       console.log('📄 PDFService: Starting PDF generation...');
       browser = await this.initBrowser();
       page = await browser.newPage();
-      
+
       // Set longer timeouts for serverless
       await page.setDefaultNavigationTimeout(60000);
       await page.setDefaultTimeout(60000);
-      
+
       const html = this.getBaseTemplate(title, content);
       console.log('📄 PDFService: HTML template generated, length:', html.length);
-      
+
       // Use 'domcontentloaded' instead of 'networkidle0' for faster, more reliable loading
-      await page.setContent(html, { 
+      await page.setContent(html, {
         waitUntil: 'domcontentloaded',
-        timeout: 30000 
+        timeout: 30000
       });
       console.log('📄 PDFService: Page content set');
-      
+
       // Wait for fonts and styles to load
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Verify page loaded correctly
       const pageTitle = await page.title();
       console.log('📄 PDFService: Page title:', pageTitle);
-      
+
       // Check if page has content
       const bodyContent = await page.evaluate(() => document.body ? document.body.innerHTML.length : 0);
       console.log('📄 PDFService: Body content length:', bodyContent);
-      
+
       if (bodyContent === 0) {
         throw new Error('Page content is empty after loading');
       }
-      
+
       console.log('📄 PDFService: Page loaded successfully, generating PDF...');
-      
+
       console.log('📄 PDFService: Calling page.pdf()...');
       let pdfBuffer;
       try {
@@ -1176,9 +1078,9 @@ class PDFService {
         console.error('❌ PDFService: PDF error stack:', pdfError.stack);
         throw new Error(`Failed to generate PDF from page: ${pdfError.message}`);
       }
-      
+
       console.log(`📄 PDFService: PDF buffer received, type: ${typeof pdfBuffer}, isBuffer: ${Buffer.isBuffer(pdfBuffer)}`);
-      
+
       // Ensure we have a Buffer
       let buffer;
       if (Buffer.isBuffer(pdfBuffer)) {
@@ -1192,55 +1094,55 @@ class PDFService {
       } else {
         buffer = Buffer.from(pdfBuffer);
       }
-      
+
       console.log(`📄 PDFService: PDF buffer size: ${buffer.length} bytes`);
-      
+
       if (!buffer || buffer.length === 0) {
         throw new Error('Generated PDF buffer is empty');
       }
-      
+
       // Verify it's a valid PDF (starts with %PDF)
       // Check both as string and as raw bytes
       const pdfHeaderStr = buffer.toString('utf8', 0, 4);
       const pdfHeaderBytes = buffer.slice(0, 4);
       const firstBytes = buffer.slice(0, 20).toString('hex');
       const firstBytesStr = buffer.toString('utf8', 0, 50);
-      
+
       console.log(`📄 PDFService: PDF validation check:`);
       console.log(`  - First 4 chars (string): "${pdfHeaderStr}"`);
       console.log(`  - First 4 bytes (hex): ${pdfHeaderBytes.toString('hex')}`);
       console.log(`  - First 20 bytes (hex): ${firstBytes}`);
       console.log(`  - First 50 chars: "${firstBytesStr}"`);
-      
+
       // Check if it starts with %PDF (both string and byte check)
-      const isValidPdf = pdfHeaderStr === '%PDF' || 
-                         (pdfHeaderBytes[0] === 0x25 && pdfHeaderBytes[1] === 0x50 && 
-                          pdfHeaderBytes[2] === 0x44 && pdfHeaderBytes[3] === 0x46);
-      
+      const isValidPdf = pdfHeaderStr === '%PDF' ||
+        (pdfHeaderBytes[0] === 0x25 && pdfHeaderBytes[1] === 0x50 &&
+          pdfHeaderBytes[2] === 0x44 && pdfHeaderBytes[3] === 0x46);
+
       if (!isValidPdf) {
         // Log more details about what we got
         const first200Chars = buffer.toString('utf8', 0, 200);
         console.error('❌ PDFService: Invalid PDF header. First 200 chars:', first200Chars);
-        
+
         // Check if it's HTML (error page)
         const bufferStr = buffer.toString('utf8', 0, 500);
         if (bufferStr.includes('<html') || bufferStr.includes('<!DOCTYPE')) {
           console.error('❌ PDFService: Buffer appears to be HTML instead of PDF');
           throw new Error('PDF generation returned HTML instead of PDF. This might be an error page.');
         }
-        
+
         throw new Error(`Generated PDF is not valid. Header: "${pdfHeaderStr}", First bytes: ${firstBytes}`);
       }
-      
+
       console.log('✅ PDFService: PDF header validation passed');
-      
+
       // Close page and browser for cleanup (important in serverless)
       try {
         await page.close();
       } catch (closeError) {
         console.warn('⚠️ PDFService: Error closing page:', closeError.message);
       }
-      
+
       // Close browser to free resources (important in serverless environments)
       try {
         if (this.browser) {
@@ -1250,13 +1152,13 @@ class PDFService {
       } catch (closeError) {
         console.warn('⚠️ PDFService: Error closing browser:', closeError.message);
       }
-      
+
       return buffer;
     } catch (error) {
       console.error('❌ PDFService: Error in PDF generation:', error.message);
       console.error('❌ PDFService: Error name:', error.name);
       console.error('❌ PDFService: Error stack:', error.stack);
-      
+
       // Cleanup on error
       if (page) {
         try {
@@ -1265,7 +1167,7 @@ class PDFService {
           console.error('⚠️ PDFService: Error closing page:', closeError.message);
         }
       }
-      
+
       if (this.browser) {
         try {
           await this.browser.close();
@@ -1274,7 +1176,7 @@ class PDFService {
           console.error('⚠️ PDFService: Error closing browser:', closeError.message);
         }
       }
-      
+
       throw new Error(`PDF generation failed: ${error.message}`);
     }
   }
@@ -1295,7 +1197,7 @@ class PDFService {
   getPaymentStatus(transaction) {
     const total = transaction.totalBalance;
     const received = transaction.remainingAmount;
-    
+
     if (received >= total) {
       return received > total ? 'Advance' : 'Paid';
     } else {
@@ -1312,7 +1214,7 @@ class PDFService {
   // Helper method to generate filter subtitle
   getFilterSubtitle(filters) {
     const parts = [];
-    
+
     if (filters.startDate && filters.endDate) {
       parts.push(`Period: ${new Date(filters.startDate).toLocaleDateString('en-PK')} - ${new Date(filters.endDate).toLocaleDateString('en-PK')}`);
     } else if (filters.startDate) {
@@ -1320,15 +1222,15 @@ class PDFService {
     } else if (filters.endDate) {
       parts.push(`Until: ${new Date(filters.endDate).toLocaleDateString('en-PK')}`);
     }
-    
+
     if (filters.transactionType) {
       parts.push(`Type: ${this.capitalize(filters.transactionType)}`);
     }
-    
+
     if (filters.paymentStatus) {
       parts.push(`Status: ${this.capitalize(filters.paymentStatus)}`);
     }
-    
+
     return parts.length > 0 ? parts.join(' | ') : null;
   }
 }

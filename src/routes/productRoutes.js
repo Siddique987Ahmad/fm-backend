@@ -27,9 +27,9 @@ router.get('/types', protect, checkPermission('read_product'), async (req, res) 
   try {
     // Ensure JSON response
     res.setHeader('Content-Type', 'application/json');
-    
+
     const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions');
-    
+
     const productTypes = products.map(product => ({
       id: product._id,
       name: product.name,
@@ -58,19 +58,19 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
   try {
     // Ensure JSON response
     res.setHeader('Content-Type', 'application/json');
-    
+
     const { productType } = req.params;
-    
+
     // Get all transactions for this product type
     const transactions = await Product.find({ productType });
-    
+
     // Calculate statistics
     let totalSales = 0;
     let totalPurchases = 0;
     let totalSalesAmount = 0;
     let totalPurchasesAmount = 0;
     let totalTransactions = transactions.length;
-    
+
     transactions.forEach(transaction => {
       if (transaction.transactionType === 'sale') {
         totalSales++;
@@ -80,9 +80,9 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
         totalPurchasesAmount += transaction.totalBalance || 0;
       }
     });
-    
+
     const totalAmount = totalSalesAmount + totalPurchasesAmount;
-    
+
     return res.status(200).json({
       success: true,
       data: {
@@ -105,7 +105,7 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
         }
       }
     });
-    
+
   } catch (error) {
     console.error('Error fetching stats:', error);
     if (!res.headersSent) {
@@ -135,12 +135,12 @@ router.get('/:productType', protect, checkPermission('read_product'), getAllTran
 router.get('/:productType/:id/invoice', protect, checkPermission('read_product'), async (req, res) => {
   try {
     const { productType, id } = req.params;
-    
+
     console.log(`📄 Invoice Request: productType=${productType}, id=${id}`);
-    
+
     // Find the transaction using .lean() to get a plain JavaScript object
     const transaction = await Product.findOne({ _id: id, productType }).lean();
-    
+
     if (!transaction) {
       console.log(`❌ Transaction not found: ${id} for productType: ${productType}`);
       return res.status(404).json({
@@ -148,29 +148,37 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
         message: 'Transaction not found'
       });
     }
-    
+
     console.log(`✅ Transaction found:`, {
       _id: transaction._id,
       productType: transaction.productType,
       clientName: transaction.clientName,
       totalBalance: transaction.totalBalance
     });
-    
+
     // Generate PDF invoice
     const pdfService = require('../services/pdfService');
     console.log('📄 Starting PDF generation...');
     const pdfBuffer = await pdfService.generateTransactionInvoice(transaction, productType);
-    
+
     if (!pdfBuffer || pdfBuffer.length === 0) {
       throw new Error('PDF buffer is empty');
     }
-    
+
     console.log(`✅ PDF generated successfully, size: ${pdfBuffer.length} bytes`);
-    
+
     // Set headers and send PDF
     res.setHeader('Content-Type', 'application/pdf');
-    const invoiceNumber = `INV-${id.toString().slice(-8).toUpperCase()}`;
-    res.setHeader('Content-Disposition', `attachment; filename="${productType}-invoice-${invoiceNumber}.pdf"`);
+
+    // Sanitize client name for filename (remove special characters, replace spaces with hyphens)
+    const sanitizedClientName = transaction.clientName
+      .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .toLowerCase() // Convert to lowercase
+      .substring(0, 50); // Limit length to 50 characters
+
+    const filename = `${sanitizedClientName}-invoice.pdf`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(pdfBuffer);
   } catch (error) {
     console.error('❌ Error generating invoice:', error);
