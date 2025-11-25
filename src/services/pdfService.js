@@ -1110,29 +1110,10 @@ class PDFService {
       console.log('📄 PDFService: Calling page.pdf()...');
       let pdfBuffer;
       try {
-        // Wait longer for all content including summary to render
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        // Get page height to create a single long page
-        const bodyHeight = await page.evaluate(() => {
-          // Force layout recalculation
-          document.body.offsetHeight;
-          return Math.max(
-            document.body.scrollHeight,
-            document.body.offsetHeight,
-            document.documentElement.clientHeight,
-            document.documentElement.scrollHeight,
-            document.documentElement.offsetHeight
-          );
-        });
-        console.log('📄 PDFService: Page height:', bodyHeight);
-
-        // Add extra padding to ensure summary is included
-        const pdfHeight = bodyHeight + 200; // Add 200px padding for summary section
-
+        // Use standard A4 format with automatic page breaks
+        // This ensures all content is visible across multiple pages
         pdfBuffer = await page.pdf({
-          width: '210mm', // A4 width
-          height: `${Math.max(pdfHeight, 297)}px`, // Dynamic height with padding
+          format: 'A4',
           margin: {
             top: '20mm',
             right: '15mm',
