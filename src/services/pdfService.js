@@ -1121,8 +1121,7 @@ class PDFService {
             left: '15mm'
           },
           printBackground: true,
-          displayHeaderFooter: false,
-          pageRanges: '1' // Only generate first page (which contains all content)
+          displayHeaderFooter: false
         });
         console.log('📄 PDFService: page.pdf() completed');
       } catch (pdfError) {
