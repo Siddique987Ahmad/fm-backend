@@ -200,6 +200,90 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
   }
 });
 
+// @route   GET /api/products/:productType/client-report
+// @desc    Generate PDF report for all client transactions
+// @access  Private
+// NOTE: This must come BEFORE /:productType/:id route to avoid route matching conflicts
+router.get('/:productType/client-report', protect, async (req, res) => {
+  console.log('🔍 [Backend] ========== CLIENT REPORT REQUEST ==========');
+  console.log('🔍 [Backend] Route matched: /:productType/client-report');
+  console.log('🔍 [Backend] req.params:', req.params);
+  console.log('🔍 [Backend] req.query:', req.query);
+  console.log('🔍 [Backend] Full URL:', req.originalUrl);
+
+  try {
+    const { productType } = req.params;
+    const { clientName } = req.query;
+
+    console.log('🔍 [Backend] Extracted productType:', productType);
+    console.log('🔍 [Backend] Extracted clientName:', clientName);
+
+    if (!clientName) {
+      console.error('❌ [Backend] Client name is missing!');
+      return res.status(400).json({
+        success: false,
+        message: 'Client name is required'
+      });
+    }
+
+    console.log(`📄 [Backend] Generating client report for: ${clientName} (${productType})`);
+
+    // Fetch all transactions for this client
+    const transactions = await Product.find({
+      productType,
+      clientName: new RegExp(clientName, 'i')
+    }).sort({ createdAt: -1 }).lean();
+
+    console.log(`🔍 [Backend] Found ${transactions ? transactions.length : 0} transactions`);
+
+    if (!transactions || transactions.length === 0) {
+      console.error('❌ [Backend] No transactions found for this client');
+      return res.status(404).json({
+        success: false,
+        message: 'No transactions found for this client'
+      });
+    }
+
+    console.log(`✅ [Backend] Found ${transactions.length} transactions for ${clientName}`);
+
+    // Generate PDF report
+    const pdfService = require('../services/pdfService');
+    console.log('🔍 [Backend] Calling pdfService.generateClientReport...');
+    const pdfBuffer = await pdfService.generateClientReport(transactions, productType, clientName);
+
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('PDF buffer is empty');
+    }
+
+    console.log(`✅ [Backend] Client report PDF generated successfully, size: ${pdfBuffer.length} bytes`);
+
+    // Set headers and send PDF
+    res.setHeader('Content-Type', 'application/pdf');
+
+    // Sanitize client name for filename
+    const sanitizedClientName = clientName
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .replace(/\s+/g, '-')
+      .toLowerCase()
+      .substring(0, 50);
+
+    const filename = `${sanitizedClientName}-report.pdf`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    console.log('✅ [Backend] Sending PDF with filename:', filename);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('❌ [Backend] Error generating client report:', error);
+    console.error('❌ [Backend] Error stack:', error.stack);
+    if (!res.headersSent) {
+      res.status(500).json({
+        success: false,
+        message: 'Error generating client report',
+        error: error.message || 'Internal server error'
+      });
+    }
+  }
+});
+
 // @route   GET /api/products/:productType/:id
 // @desc    Get single product transaction by ID
 // @access  Private (read_product permission required)

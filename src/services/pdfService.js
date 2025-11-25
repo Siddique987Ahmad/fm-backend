@@ -1233,6 +1233,111 @@ class PDFService {
 
     return parts.length > 0 ? parts.join(' | ') : null;
   }
+
+  // Generate client transaction report
+  async generateClientReport(transactions, productType, clientName) {
+    try {
+      console.log(`📄 Generating client report for ${clientName} with ${transactions.length} transactions`);
+
+      // Calculate summary
+      const summary = {
+        totalWeight: 0,
+        totalAmount: 0,
+        totalReceived: 0,
+        totalOutstanding: 0,
+        salesCount: 0,
+        purchasesCount: 0
+      };
+
+      transactions.forEach(txn => {
+        summary.totalWeight += txn.weight || 0;
+        summary.totalAmount += txn.totalBalance || 0;
+        summary.totalReceived += txn.remainingAmount || 0;
+        if (txn.transactionType === 'sale') summary.salesCount++;
+        else summary.purchasesCount++;
+      });
+
+      summary.totalOutstanding = summary.totalAmount - summary.totalReceived;
+
+      // Generate HTML content
+      const content = `
+        <div class="header">
+          <h1>Client Transaction Report</h1>
+          <h2>${clientName}</h2>
+          <p>Product Type: ${this.capitalize(productType.replace(/-/g, ' '))}</p>
+          <p>Report Date: ${new Date().toLocaleDateString('en-PK', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Weight</th>
+              <th>Rate</th>
+              <th>Total Amount</th>
+              <th>Received/Paid</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${transactions.map(txn => {
+        const status = this.getPaymentStatus(txn);
+        return `
+                <tr>
+                  <td>${new Date(txn.createdAt).toLocaleDateString('en-PK')}</td>
+                  <td><span class="badge ${txn.transactionType === 'sale' ? 'badge-success' : 'badge-info'}">${this.capitalize(txn.transactionType)}</span></td>
+                  <td>${txn.weight} kg</td>
+                  <td>PKR ${txn.rate.toLocaleString()}/kg</td>
+                  <td>PKR ${txn.totalBalance.toLocaleString()}</td>
+                  <td>PKR ${txn.remainingAmount.toLocaleString()}</td>
+                  <td><span class="badge badge-${status.toLowerCase()}">${status}</span></td>
+                </tr>
+              `;
+      }).join('')}
+          </tbody>
+          <tfoot>
+            <tr class="summary-row">
+              <td colspan="2"><strong>TOTAL</strong></td>
+              <td><strong>${summary.totalWeight.toFixed(2)} kg</strong></td>
+              <td>-</td>
+              <td><strong>PKR ${summary.totalAmount.toLocaleString()}</strong></td>
+              <td><strong>PKR ${summary.totalReceived.toLocaleString()}</strong></td>
+              <td><strong>${summary.totalOutstanding > 0 ? 'Pending' : 'Paid'}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div class="summary-box">
+          <h3>Summary</h3>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Total Transactions:</span>
+              <span class="summary-value">${transactions.length}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Sales:</span>
+              <span class="summary-value">${summary.salesCount}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Purchases:</span>
+              <span class="summary-value">${summary.purchasesCount}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Outstanding Amount:</span>
+              <span class="summary-value ${summary.totalOutstanding > 0 ? 'text-danger' : 'text-success'}">PKR ${summary.totalOutstanding.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const title = `${clientName} - Transaction Report`;
+      return await this.generatePDF(title, content);
+    } catch (error) {
+      console.error('❌ Error generating client report:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new PDFService();
