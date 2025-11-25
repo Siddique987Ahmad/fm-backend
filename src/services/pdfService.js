@@ -1061,8 +1061,13 @@ class PDFService {
       console.log('📄 PDFService: Calling page.pdf()...');
       let pdfBuffer;
       try {
+        // Get page height to create a single long page
+        const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
+        console.log('📄 PDFService: Page height:', bodyHeight);
+
         pdfBuffer = await page.pdf({
-          format: 'A4',
+          width: '210mm', // A4 width
+          height: `${Math.max(bodyHeight, 297)}px`, // Dynamic height based on content, minimum A4 height
           margin: {
             top: '20mm',
             right: '15mm',
@@ -1070,7 +1075,8 @@ class PDFService {
             left: '15mm'
           },
           printBackground: true,
-          displayHeaderFooter: false
+          displayHeaderFooter: false,
+          pageRanges: '1' // Only generate first page (which contains all content)
         });
         console.log('📄 PDFService: page.pdf() completed');
       } catch (pdfError) {
@@ -1322,6 +1328,14 @@ class PDFService {
             <div class="summary-item">
               <span class="summary-label">Purchases:</span>
               <span class="summary-value">${summary.purchasesCount}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Total Amount:</span>
+              <span class="summary-value">PKR ${summary.totalAmount.toLocaleString()}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Amount Received/Paid:</span>
+              <span class="summary-value">PKR ${summary.totalReceived.toLocaleString()}</span>
             </div>
             <div class="summary-item">
               <span class="summary-label">Outstanding Amount:</span>
