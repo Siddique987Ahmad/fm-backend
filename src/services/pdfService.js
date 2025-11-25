@@ -1385,32 +1385,50 @@ class PDFService {
 
         <div class="summary-box">
           <h3>Summary</h3>
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">Total Transactions:</span>
-              <span class="summary-value">${transactions.length}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Total Sales:</span>
-              <span class="summary-value">${summary.salesCount}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Total Purchases:</span>
-              <span class="summary-value">${summary.purchasesCount}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Total Amount:</span>
-              <span class="summary-value">PKR ${summary.totalAmount.toLocaleString()}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Amount Received/Paid:</span>
-              <span class="summary-value">PKR ${summary.totalReceived.toLocaleString()}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Outstanding Amount:</span>
-              <span class="summary-value ${summary.totalOutstanding > 0 ? 'text-danger' : 'text-success'}">PKR ${summary.totalOutstanding.toLocaleString()}</span>
-            </div>
-          </div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+                <strong>Total Transactions:</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px; text-align: right;">
+                <strong>${transactions.length}</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+                <strong>Total Sales:</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px; text-align: right;">
+                <strong>${summary.salesCount}</strong>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+                <strong>Total Purchases:</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px; text-align: right;">
+                <strong>${summary.purchasesCount}</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+                <strong>Total Amount:</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px; text-align: right;">
+                <strong>PKR ${summary.totalAmount.toLocaleString()}</strong>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+                <strong>Amount Received/Paid:</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px; text-align: right;">
+                <strong>PKR ${summary.totalReceived.toLocaleString()}</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px;">
+                <strong>Outstanding Amount:</strong>
+              </td>
+              <td style="padding: 10px; background: white; border: 1px solid #e0e0e0; border-radius: 3px; text-align: right; color: ${summary.totalOutstanding > 0 ? '#dc2626' : '#16a34a'};">
+                <strong>PKR ${summary.totalOutstanding.toLocaleString()}</strong>
+              </td>
+            </tr>
+          </table>
         </div>
       `;
 
