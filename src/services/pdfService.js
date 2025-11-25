@@ -656,6 +656,55 @@ class PDFService {
         .no-break {
           page-break-inside: avoid;
         }
+        
+        .summary-box {
+          margin-top: 30px;
+          padding: 20px;
+          background: #f8f9fa;
+          border: 1px solid #dee2e6;
+          border-radius: 5px;
+        }
+        
+        .summary-box h3 {
+          margin: 0 0 15px 0;
+          font-size: 18px;
+          color: #000;
+          border-bottom: 2px solid #000;
+          padding-bottom: 10px;
+        }
+        
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 15px;
+        }
+        
+        .summary-item {
+          display: flex;
+          justify-content: space-between;
+          padding: 10px;
+          background: white;
+          border-radius: 3px;
+          border: 1px solid #e0e0e0;
+        }
+        
+        .summary-label {
+          font-weight: 600;
+          color: #333;
+        }
+        
+        .summary-value {
+          font-weight: bold;
+          color: #000;
+        }
+        
+        .text-danger {
+          color: #dc2626 !important;
+        }
+        
+        .text-success {
+          color: #16a34a !important;
+        }
       </style>
     </head>
     <body>
@@ -1289,6 +1338,7 @@ class PDFService {
           <tbody>
             ${transactions.map(txn => {
         const status = this.getPaymentStatus(txn);
+        const outstanding = txn.totalBalance - txn.remainingAmount;
         return `
                 <tr>
                   <td>${new Date(txn.createdAt).toLocaleDateString('en-PK')}</td>
@@ -1297,7 +1347,10 @@ class PDFService {
                   <td>PKR ${txn.rate.toLocaleString()}/kg</td>
                   <td>PKR ${txn.totalBalance.toLocaleString()}</td>
                   <td>PKR ${txn.remainingAmount.toLocaleString()}</td>
-                  <td><span class="badge badge-${status.toLowerCase()}">${status}</span></td>
+                  <td>
+                    <span class="badge badge-${status.toLowerCase()}">${status}</span>
+                    ${outstanding > 0 ? `<br><small style="color: #dc2626; font-weight: bold;">PKR ${outstanding.toLocaleString()}</small>` : ''}
+                  </td>
                 </tr>
               `;
       }).join('')}
@@ -1322,11 +1375,11 @@ class PDFService {
               <span class="summary-value">${transactions.length}</span>
             </div>
             <div class="summary-item">
-              <span class="summary-label">Sales:</span>
+              <span class="summary-label">Total Sales:</span>
               <span class="summary-value">${summary.salesCount}</span>
             </div>
             <div class="summary-item">
-              <span class="summary-label">Purchases:</span>
+              <span class="summary-label">Total Purchases:</span>
               <span class="summary-value">${summary.purchasesCount}</span>
             </div>
             <div class="summary-item">
