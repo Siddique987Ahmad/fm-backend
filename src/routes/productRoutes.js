@@ -200,6 +200,70 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
   }
 });
 
+// @route   GET /api/products/:productType/clients
+// @desc    Get unique client/supplier names with advance balances for autocomplete
+// @access  Private
+// NOTE: This must come BEFORE /:productType/:id route to avoid route matching conflicts
+router.get('/:productType/clients', protect, async (req, res) => {
+  try {
+    const { productType } = req.params;
+    const { transactionType } = req.query;
+
+    if (!transactionType || !['sale', 'purchase'].includes(transactionType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Valid transactionType (sale or purchase) is required'
+      });
+    }
+
+    // Get clients with advance payments using aggregation
+    const clientsWithAdvances = await Product.aggregate([
+      { 
+        $match: { 
+          productType,
+          transactionType,
+          $expr: { $gt: ['$remainingAmount', '$totalBalance'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$clientName',
+          totalAdvance: {
+            $sum: { $subtract: ['$remainingAmount', '$totalBalance'] }
+          },
+          transactionCount: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Get all unique client names (including those without advances)
+    const allClients = await Product.distinct('clientName', {
+      productType,
+      transactionType
+    });
+
+    // Sort all clients alphabetically
+    allClients.sort();
+
+    res.status(200).json({
+      success: true,
+      data: {
+        clientsWithAdvances,
+        allClients
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching clients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching clients',
+      error: error.message
+    });
+  }
+});
+
 // @route   GET /api/products/:productType/advances
 // @desc    Get all transactions with advance payments (partial payments)
 // @access  Private
