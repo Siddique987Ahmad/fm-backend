@@ -200,6 +200,96 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
   }
 });
 
+// @route   GET /api/products/:productType/advances
+// @desc    Get all transactions with advance payments (partial payments)
+// @access  Private
+// NOTE: This must come BEFORE /:productType/:id route to avoid route matching conflicts
+router.get('/:productType/advances', protect, async (req, res) => {
+  try {
+    const { productType } = req.params;
+    const { transactionType, clientName, page = 1, limit = 50 } = req.query;
+
+    // Build query for advance payments
+    // Advance payment = 0 < remainingAmount < totalBalance
+    const query = {
+      productType,
+      $expr: {
+        $and: [
+          { $gt: ['$remainingAmount', 0] },
+          { $lt: ['$remainingAmount', '$totalBalance'] }
+        ]
+      }
+    };
+
+    // Add transaction type filter
+    if (transactionType && transactionType !== 'all') {
+      query.transactionType = transactionType;
+    }
+
+    // Add client name filter
+    if (clientName) {
+      query.clientName = new RegExp(clientName, 'i');
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch transactions and count
+    const [transactions, totalCount] = await Promise.all([
+      Product.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Product.countDocuments(query)
+    ]);
+
+    // Calculate summary
+    const summary = {
+      totalSalesAdvances: 0,
+      totalPurchasesAdvances: 0,
+      totalOutstanding: 0,
+      salesCount: 0,
+      purchasesCount: 0
+    };
+
+    transactions.forEach(txn => {
+      const outstanding = txn.totalBalance - txn.remainingAmount;
+      summary.totalOutstanding += outstanding;
+      
+      if (txn.transactionType === 'sale') {
+        summary.totalSalesAdvances += txn.remainingAmount;
+        summary.salesCount++;
+      } else {
+        summary.totalPurchasesAdvances += txn.remainingAmount;
+        summary.purchasesCount++;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        transactions,
+        summary,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalCount / parseInt(limit)),
+          totalItems: totalCount,
+          itemsPerPage: parseInt(limit)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching advance payments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching advance payments',
+      error: error.message
+    });
+  }
+});
+
 // @route   GET /api/products/:productType/client-report
 // @desc    Generate PDF report for all client transactions
 // @access  Private
