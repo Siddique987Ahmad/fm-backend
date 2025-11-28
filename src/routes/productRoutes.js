@@ -210,14 +210,14 @@ router.get('/:productType/advances', protect, async (req, res) => {
     const { transactionType, clientName, page = 1, limit = 50 } = req.query;
 
     // Build query for advance payments
-    // Advance payment = 0 < remainingAmount < totalBalance
+    // In this system, advance payment means customer paid MORE than total
+    // remainingAmount = amount received/paid
+    // totalBalance = total transaction amount
+    // Advance payment = remainingAmount > totalBalance (overpayment)
     const query = {
       productType,
       $expr: {
-        $and: [
-          { $gt: ['$remainingAmount', 0] },
-          { $lt: ['$remainingAmount', '$totalBalance'] }
-        ]
+        $gt: ['$remainingAmount', '$totalBalance']
       }
     };
 
@@ -254,14 +254,16 @@ router.get('/:productType/advances', protect, async (req, res) => {
     };
 
     transactions.forEach(txn => {
-      const outstanding = txn.totalBalance - txn.remainingAmount;
-      summary.totalOutstanding += outstanding;
+      // For advance payments, remainingAmount > totalBalance
+      // The advance amount is the excess payment
+      const advanceAmount = txn.remainingAmount - txn.totalBalance;
+      summary.totalOutstanding += advanceAmount; // This will be positive (advance given to customer/supplier)
       
       if (txn.transactionType === 'sale') {
-        summary.totalSalesAdvances += txn.remainingAmount;
+        summary.totalSalesAdvances += advanceAmount;
         summary.salesCount++;
       } else {
-        summary.totalPurchasesAdvances += txn.remainingAmount;
+        summary.totalPurchasesAdvances += advanceAmount;
         summary.purchasesCount++;
       }
     });
