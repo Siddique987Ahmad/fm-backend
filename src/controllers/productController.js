@@ -16,11 +16,25 @@ const createTransaction = async (req, res) => {
       rate,
       remainingAmount,
       totalBalance,
-      notes
+      notes,
+      isInternalTransaction // Extract this field
     } = req.body;
+
+    console.log(`🔍 [Create Transaction] Request for ${productType}:`, {
+      clientName,
+      transactionType,
+      weight,
+      rate,
+      remainingAmount,
+      totalBalance,
+      totalBalance,
+      isInternalTransaction,
+      typeOfInternal: typeof isInternalTransaction
+    });
 
     // Validation
     if (!transactionType || !clientName || !weight || !rate || remainingAmount === undefined || totalBalance === undefined) {
+      console.log('❌ [Create Transaction] Missing required fields');
       return res.status(400).json({
         success: false,
         message: 'Please provide all required fields'
@@ -38,6 +52,7 @@ const createTransaction = async (req, res) => {
       rateUnit: 'per_kg',
       remainingAmount: parseFloat(remainingAmount),
       totalBalance: parseFloat(totalBalance),
+      isInternalTransaction: isInternalTransaction || false, // Pass it to model
       notes
     });
 
@@ -87,8 +102,14 @@ const getAllTransactions = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Build filter object - include productType
-    const filter = { productType };
+    // Build filter object - include productType and exclude internal transactions
+    const filter = { 
+      productType,
+      $or: [
+        { isInternalTransaction: { $exists: false } },
+        { isInternalTransaction: false }
+      ]
+    };
     if (transactionType) filter.transactionType = transactionType;
     if (clientName) filter.clientName = new RegExp(clientName, 'i');
 

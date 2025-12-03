@@ -50,6 +50,141 @@ router.get('/types', protect, checkPermission('read_product'), async (req, res) 
   }
 });
 
+// @route   GET /api/products/:productType/advances
+// @desc    Get all transactions with advance payments (partial payments)
+// @access  Private
+// NOTE: This must come BEFORE /:productType/:id route to avoid route matching conflicts
+router.get('/:productType/advances', protect, async (req, res) => {
+  try {
+    console.log('🔍 [Advance Payments] Route HIT!');
+    const { productType } = req.params;
+    const { transactionType, clientName, page = 1, limit = 50 } = req.query;
+
+    // Build base query
+    // NOTE: Do NOT exclude internal transactions here - we need them for net advance calculation
+    const baseQuery = { productType };
+    if (transactionType && transactionType !== 'all') {
+      baseQuery.transactionType = transactionType;
+    }
+    if (clientName) {
+      baseQuery.clientName = new RegExp(clientName, 'i');
+    }
+
+    // Use aggregation to calculate NET advance per client
+    // Net advance = sum of (remainingAmount - totalBalance) for all transactions
+    // This accounts for both overpayments (positive) and underpayments (negative)
+    const advanceAggregation = await Product.aggregate([
+      { $match: baseQuery },
+      {
+        $group: {
+          _id: {
+            clientName: '$clientName',
+            transactionType: '$transactionType'
+          },
+          netAdvance: {
+            $sum: { $subtract: ['$remainingAmount', '$totalBalance'] }
+          },
+          transactions: { $push: '$$ROOT' }
+        }
+      },
+      {
+        $match: {
+          netAdvance: { $gt: 0 } // Only show clients with positive net advance
+        }
+      },
+      { $sort: { '_id.clientName': 1 } }
+    ]);
+
+    console.log('🔍 [Advance Payments] Aggregation results:', JSON.stringify(advanceAggregation.map(g => ({
+      client: g._id.clientName,
+      type: g._id.transactionType,
+      netAdvance: g.netAdvance,
+      transactionCount: g.transactions.length
+    })), null, 2));
+
+    // Flatten the results and apply pagination
+    const allTransactions = [];
+    advanceAggregation.forEach(group => {
+      // For each client with net advance, find their latest transaction with overpayment
+      const latestOverpayment = group.transactions
+        .filter(txn => txn.remainingAmount > txn.totalBalance)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+      
+      if (latestOverpayment) {
+        // Explicitly create a new object using Object.assign to avoid spread issues
+        const transactionWithNetAdvance = Object.assign({}, latestOverpayment, {
+          netAdvance: Number(group.netAdvance), // Force number
+          TEST_FLAG: true // Debug flag
+        });
+        
+        console.log(`🔍 [Advance Payments] Prepared transaction for ${group._id.clientName}:`, {
+          netAdvance: transactionWithNetAdvance.netAdvance,
+          originalRemaining: latestOverpayment.remainingAmount,
+          hasTestFlag: transactionWithNetAdvance.TEST_FLAG
+        });
+
+        allTransactions.push(transactionWithNetAdvance);
+      }
+    });
+
+    // Apply pagination
+    const totalCount = allTransactions.length;
+    const paginatedTransactions = allTransactions.slice(
+      (parseInt(page) - 1) * parseInt(limit),
+      parseInt(page) * parseInt(limit)
+    );
+
+    console.log('🔍 [Advance Payments] Sending response:', JSON.stringify(paginatedTransactions.map(t => ({
+      client: t.clientName,
+      netAdvance: t.netAdvance,
+      remaining: t.remainingAmount
+    })), null, 2));
+
+    // Calculate summary
+    const summary = {
+      totalSalesAdvances: 0,
+      totalPurchasesAdvances: 0,
+      totalOutstanding: 0,
+      salesCount: 0,
+      purchasesCount: 0
+    };
+
+    advanceAggregation.forEach(group => {
+      summary.totalOutstanding += group.netAdvance;
+      
+      if (group._id.transactionType === 'sale') {
+        summary.totalSalesAdvances += group.netAdvance;
+        summary.salesCount++;
+      } else {
+        summary.totalPurchasesAdvances += group.netAdvance;
+        summary.purchasesCount++;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        transactions: paginatedTransactions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: totalCount,
+          pages: Math.ceil(totalCount / parseInt(limit))
+        },
+        summary
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching advance payments:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching advance payments',
+      error: error.message
+    });
+  }
+});
+
 // @route   GET /api/products/:productType/stats
 // @desc    Get transaction statistics for specific product
 // @access  Private (read_product permission required)
@@ -216,26 +351,67 @@ router.get('/:productType/clients', protect, async (req, res) => {
       });
     }
 
-    // Get clients with advance payments using aggregation
+    // Get clients with NET advance payments using aggregation
+    // This accounts for both overpayments and offsetting transactions
     const clientsWithAdvances = await Product.aggregate([
       { 
         $match: { 
           productType,
-          transactionType,
-          $expr: { $gt: ['$remainingAmount', '$totalBalance'] }
+          transactionType
         }
       },
       {
         $group: {
           _id: '$clientName',
-          totalAdvance: {
+          netAdvance: {
             $sum: { $subtract: ['$remainingAmount', '$totalBalance'] }
           },
-          transactionCount: { $sum: 1 }
+          transactionCount: { $sum: 1 },
+          transactions: { $push: { 
+            remainingAmount: '$remainingAmount', 
+            totalBalance: '$totalBalance',
+            diff: { $subtract: ['$remainingAmount', '$totalBalance'] },
+            isInternal: '$isInternalTransaction',
+            createdAt: '$createdAt'
+          }}
+        }
+      },
+      {
+        $match: {
+          netAdvance: { $gt: 0 } // Only include clients with positive net advance
         }
       },
       { $sort: { _id: 1 } }
     ]);
+
+    console.log('🔍 [Clients Endpoint] Aggregation results:');
+    clientsWithAdvances.forEach(client => {
+      console.log(`\n  Client: ${client._id}`);
+      console.log(`  Net Advance: ${client.netAdvance}`);
+      console.log(`  Transactions (${client.transactionCount}):`);
+      client.transactions.forEach((txn, idx) => {
+        console.log(`    ${idx + 1}. Paid: ${txn.remainingAmount}, Total: ${txn.totalBalance}, Diff: ${txn.diff}, Internal: ${txn.isInternal || false}`);
+      });
+    });
+
+    // Debug: Check if there are any internal transactions for these clients
+    const allTransactionsIncludingInternal = await Product.find({
+      productType,
+      transactionType,
+      clientName: { $in: clientsWithAdvances.map(c => c._id) }
+    }).select('clientName remainingAmount totalBalance isInternalTransaction createdAt').sort({ createdAt: -1 });
+    
+    console.log('\n🔍 [Debug] ALL transactions (including internal):');
+    allTransactionsIncludingInternal.forEach(txn => {
+      console.log(`  ${txn.clientName}: Paid ${txn.remainingAmount}, Total ${txn.totalBalance}, Internal: ${txn.isInternalTransaction || false}, Date: ${txn.createdAt}`);
+    });
+
+    // Transform to match expected format (totalAdvance -> netAdvance)
+    const formattedClients = clientsWithAdvances.map(client => ({
+      _id: client._id,
+      totalAdvance: client.netAdvance, // Keep the field name for backward compatibility
+      transactionCount: client.transactionCount
+    }));
 
     // Get all unique client names (including those without advances)
     const allClients = await Product.distinct('clientName', {
@@ -249,7 +425,7 @@ router.get('/:productType/clients', protect, async (req, res) => {
     res.status(200).json({
       success: true,
       data: {
-        clientsWithAdvances,
+        clientsWithAdvances: formattedClients,
         allClients
       }
     });
@@ -264,97 +440,12 @@ router.get('/:productType/clients', protect, async (req, res) => {
   }
 });
 
+// MOVED TO TOP
 // @route   GET /api/products/:productType/advances
 // @desc    Get all transactions with advance payments (partial payments)
 // @access  Private
 // NOTE: This must come BEFORE /:productType/:id route to avoid route matching conflicts
-router.get('/:productType/advances', protect, async (req, res) => {
-  try {
-    const { productType } = req.params;
-    const { transactionType, clientName, page = 1, limit = 50 } = req.query;
 
-    // Build query for advance payments
-    // In this system, advance payment means customer paid MORE than total
-    // remainingAmount = amount received/paid
-    // totalBalance = total transaction amount
-    // Advance payment = remainingAmount > totalBalance (overpayment)
-    const query = {
-      productType,
-      $expr: {
-        $gt: ['$remainingAmount', '$totalBalance']
-      }
-    };
-
-    // Add transaction type filter
-    if (transactionType && transactionType !== 'all') {
-      query.transactionType = transactionType;
-    }
-
-    // Add client name filter
-    if (clientName) {
-      query.clientName = new RegExp(clientName, 'i');
-    }
-
-    // Calculate pagination
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
-    // Fetch transactions and count
-    const [transactions, totalCount] = await Promise.all([
-      Product.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(parseInt(limit))
-        .lean(),
-      Product.countDocuments(query)
-    ]);
-
-    // Calculate summary
-    const summary = {
-      totalSalesAdvances: 0,
-      totalPurchasesAdvances: 0,
-      totalOutstanding: 0,
-      salesCount: 0,
-      purchasesCount: 0
-    };
-
-    transactions.forEach(txn => {
-      // For advance payments, remainingAmount > totalBalance
-      // The advance amount is the excess payment
-      const advanceAmount = txn.remainingAmount - txn.totalBalance;
-      summary.totalOutstanding += advanceAmount; // This will be positive (advance given to customer/supplier)
-      
-      if (txn.transactionType === 'sale') {
-        summary.totalSalesAdvances += advanceAmount;
-        summary.salesCount++;
-      } else {
-        summary.totalPurchasesAdvances += advanceAmount;
-        summary.purchasesCount++;
-      }
-    });
-
-    res.status(200).json({
-      success: true,
-      data: {
-        transactions,
-        summary,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / parseInt(limit)),
-          totalItems: totalCount,
-          itemsPerPage: parseInt(limit)
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('Error fetching advance payments:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching advance payments',
-      error: error.message
-    });
-  }
-});
 
 // @route   GET /api/products/:productType/client-report
 // @desc    Generate PDF report for all client transactions

@@ -97,6 +97,10 @@ const productSchema = new mongoose.Schema({
     type: String,
     maxLength: [500, 'Notes cannot exceed 500 characters']
   },
+  isInternalTransaction: {
+    type: Boolean,
+    default: false
+  },
   createdBy: {
     type: String,
     default: 'system'
@@ -233,5 +237,18 @@ productSchema.index({ productType: 1, transactionType: 1, createdAt: -1 });
 productSchema.index({ productType: 1, clientName: 1 });
 productSchema.index({ productType: 1, weightUnit: 1 });
 productSchema.index({ productType: 1, paymentStatus: 1 });
+
+// Debug hook to check isInternalTransaction before save
+productSchema.pre('save', function(next) {
+  if (this.isNew) {
+    console.log('🔍 [Product Model] Pre-save check:', {
+      client: this.clientName,
+      type: this.transactionType,
+      isInternal: this.isInternalTransaction,
+      internalType: typeof this.isInternalTransaction
+    });
+  }
+  next();
+});
 
 module.exports = mongoose.model('Product', productSchema);
