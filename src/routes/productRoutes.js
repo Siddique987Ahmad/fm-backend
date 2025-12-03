@@ -166,10 +166,10 @@ router.get('/:productType/advances', protect, async (req, res) => {
       data: {
         transactions: paginatedTransactions,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total: totalCount,
-          pages: Math.ceil(totalCount / parseInt(limit))
+          currentPage: parseInt(page),
+          itemsPerPage: parseInt(limit),
+          totalItems: totalCount,
+          totalPages: Math.ceil(totalCount / parseInt(limit))
         },
         summary
       }
