@@ -28,16 +28,17 @@ exports.getProductById = asyncHandler(async (req, res, next) => {
 // @route   POST /api/admin/products
 // @access  Private (Admin)
 exports.createProduct = asyncHandler(async (req, res, next) => {
-  const { name, description, unit, pricePerUnit, allowedTransactions } = req.body;
+  const { name, description, unit, pricePerUnit, allowedTransactions, enableNugCalculation } = req.body;
   
-  console.log('Creating product with data:', { name, description, unit, pricePerUnit, allowedTransactions });
+  console.log('Creating product with data:', { name, description, unit, pricePerUnit, allowedTransactions, enableNugCalculation });
 
   const product = await ProductCatalog.create({
     name,
     description,
     unit,
     pricePerUnit,
-    allowedTransactions: allowedTransactions || ['sale', 'purchase']
+    allowedTransactions: allowedTransactions || ['sale', 'purchase'],
+    enableNugCalculation: enableNugCalculation || false
   });
 
   console.log('Created product:', product);
@@ -48,13 +49,13 @@ exports.createProduct = asyncHandler(async (req, res, next) => {
 // @route   PUT /api/admin/products/:id
 // @access  Private (Admin)
 exports.updateProduct = asyncHandler(async (req, res, next) => {
-  const { name, description, unit, pricePerUnit, allowedTransactions } = req.body;
+  const { name, description, unit, pricePerUnit, allowedTransactions, enableNugCalculation } = req.body;
   
-  console.log('Updating product with data:', { name, description, unit, pricePerUnit, allowedTransactions });
+  console.log('Updating product with data:', { name, description, unit, pricePerUnit, allowedTransactions, enableNugCalculation });
 
   const product = await ProductCatalog.findByIdAndUpdate(
     req.params.id,
-    { name, description, unit, pricePerUnit, allowedTransactions },
+    { name, description, unit, pricePerUnit, allowedTransactions, enableNugCalculation },
     {
       new: true,
       runValidators: true

@@ -101,6 +101,34 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  // Nug calculation fields
+  useNugCalculation: {
+    type: Boolean,
+    default: false
+  },
+  nugEntries: [{
+    containers: {
+      type: Number,
+      min: [0, 'Containers cannot be negative']
+    },
+    tareWeightPerContainer: {
+      type: Number,
+      min: [0, 'Tare weight cannot be negative']
+    },
+    grossWeight: {
+      type: Number,
+      min: [0, 'Gross weight cannot be negative']
+    },
+    netWeight: {
+      type: Number,
+      min: [0, 'Net weight cannot be negative']
+    }
+  }],
+  totalNetWeight: {
+    type: Number,
+    default: 0,
+    min: [0, 'Total net weight cannot be negative']
+  },
   createdBy: {
     type: String,
     default: 'system'

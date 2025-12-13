@@ -17,7 +17,9 @@ const createTransaction = async (req, res) => {
       remainingAmount,
       totalBalance,
       notes,
-      isInternalTransaction // Extract this field
+      isInternalTransaction, // Extract this field
+      useNugCalculation, // New: Nug calculation flag
+      nugEntries // New: Array of Nug entries
     } = req.body;
 
     console.log(`🔍 [Create Transaction] Request for ${productType}:`, {
@@ -27,13 +29,29 @@ const createTransaction = async (req, res) => {
       rate,
       remainingAmount,
       totalBalance,
-      totalBalance,
       isInternalTransaction,
-      typeOfInternal: typeof isInternalTransaction
+      useNugCalculation,
+      nugEntriesCount: nugEntries ? nugEntries.length : 0
     });
 
+    // Calculate total net weight if using Nug calculation
+    let finalWeight = parseFloat(weight);
+    let totalNetWeight = 0;
+    
+    if (useNugCalculation && nugEntries && nugEntries.length > 0) {
+      // Calculate net weight for each entry and sum them up
+      totalNetWeight = nugEntries.reduce((sum, entry) => {
+        return sum + (entry.netWeight || 0);
+      }, 0);
+      
+      // Use total net weight as the transaction weight
+      finalWeight = totalNetWeight;
+      
+      console.log(`📊 [Nug Calculation] Total net weight: ${totalNetWeight} kg from ${nugEntries.length} entries`);
+    }
+
     // Validation
-    if (!transactionType || !clientName || !weight || !rate || remainingAmount === undefined || totalBalance === undefined) {
+    if (!transactionType || !clientName || finalWeight === 0 || !rate || remainingAmount === undefined || totalBalance === undefined) {
       console.log('❌ [Create Transaction] Missing required fields');
       return res.status(400).json({
         success: false,
@@ -46,13 +64,16 @@ const createTransaction = async (req, res) => {
       productType, // Add this field
       transactionType,
       clientName,
-      weight: parseFloat(weight),
+      weight: finalWeight,
       weightUnit: 'kg',
       rate: parseFloat(rate),
       rateUnit: 'per_kg',
       remainingAmount: parseFloat(remainingAmount),
       totalBalance: parseFloat(totalBalance),
       isInternalTransaction: isInternalTransaction || false, // Pass it to model
+      useNugCalculation: useNugCalculation || false,
+      nugEntries: useNugCalculation ? nugEntries : [],
+      totalNetWeight: useNugCalculation ? totalNetWeight : 0,
       notes
     });
 

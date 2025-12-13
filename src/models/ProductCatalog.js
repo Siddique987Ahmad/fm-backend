@@ -36,6 +36,10 @@ const ProductCatalogSchema = new mongoose.Schema({
       message: 'At least one transaction type must be allowed'
     }
   },
+  enableNugCalculation: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
