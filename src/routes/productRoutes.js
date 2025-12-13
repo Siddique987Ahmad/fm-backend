@@ -196,8 +196,35 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
 
     const { productType } = req.params;
 
-    // Get all transactions for this product type
-    const transactions = await Product.find({ productType });
+    // Get all transactions for this product type (exclude internal transactions)
+    // IMPORTANT: Use the SAME filter as getAllTransactions to ensure consistency
+    const transactions = await Product.find({ 
+      productType,
+      $or: [
+        { isInternalTransaction: { $exists: false } },
+        { isInternalTransaction: false }
+      ]
+    });
+
+    // Debug: Also check how many internal transactions exist
+    const internalCount = await Product.countDocuments({ 
+      productType,
+      isInternalTransaction: true 
+    });
+
+    console.log(`📊 [Stats] Product: ${productType}`);
+    console.log(`   - Regular transactions: ${transactions.length}`);
+    console.log(`   - Internal transactions: ${internalCount}`);
+    
+    // Log each transaction for debugging
+    if (transactions.length > 0) {
+      console.log(`   - Transaction details:`);
+      transactions.forEach((t, idx) => {
+        console.log(`     ${idx + 1}. ID: ${t._id}, Client: ${t.clientName}, Type: ${t.transactionType}, Amount: ${t.totalBalance}, Internal: ${t.isInternalTransaction}`);
+      });
+    }
+
+    console.log(`📊 [Stats] Product: ${productType}, Found ${transactions.length} transactions (excluding internal)`);
 
     // Calculate statistics
     let totalSales = 0;
@@ -215,6 +242,8 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
         totalPurchasesAmount += transaction.totalBalance || 0;
       }
     });
+
+    console.log(`📊 [Stats] ${productType}: Sales=${totalSales} (${totalSalesAmount}), Purchases=${totalPurchases} (${totalPurchasesAmount})`);
 
     const totalAmount = totalSalesAmount + totalPurchasesAmount;
 
@@ -250,6 +279,47 @@ router.get('/:productType/stats', protect, checkPermission('read_product'), asyn
         error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       });
     }
+  }
+});
+
+// @route   GET /api/products/:productType/debug-all
+// @desc    Debug endpoint to show ALL transactions including internal ones
+// @access  Private
+router.get('/:productType/debug-all', protect, async (req, res) => {
+  try {
+    const { productType } = req.params;
+    
+    const allTransactions = await Product.find({ productType })
+      .select('clientName transactionType totalBalance isInternalTransaction createdAt')
+      .sort({ createdAt: -1 });
+    
+    const regularCount = await Product.countDocuments({ 
+      productType,
+      isInternalTransaction: { $ne: true }
+    });
+    
+    const internalCount = await Product.countDocuments({ 
+      productType,
+      isInternalTransaction: true 
+    });
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        productType,
+        totalCount: allTransactions.length,
+        regularCount,
+        internalCount,
+        transactions: allTransactions
+      }
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching debug data',
+      error: error.message
+    });
   }
 });
 
