@@ -110,8 +110,17 @@ exports.getProductStats = asyncHandler(async (req, res, next) => {
 // @route   GET /api/admin/products/types
 // @access  Private (Admin/Manager)
 exports.getProductTypes = asyncHandler(async (req, res, next) => {
-  const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions enableNugCalculation');
+  console.log("🔥 getProductTypes controller called");
+  // Remove .select() temporarily to debug - fetch everything
+  const products = await ProductCatalog.find({ isActive: true });
   
+  console.log(`🔥 Found ${products.length} active products`);
+  const seeds = products.find(p => p.name === "Seeds");
+  if (seeds) {
+    console.log("🔥 Server-side Seeds data:", JSON.stringify(seeds, null, 2));
+    console.log("🔥 Server-side Seeds enableNugCalculation:", seeds.enableNugCalculation);
+  }
+
   const productTypes = products.map(product => ({
     id: product._id,
     name: product.name,
