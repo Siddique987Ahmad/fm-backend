@@ -110,28 +110,16 @@ exports.getProductStats = asyncHandler(async (req, res, next) => {
 // @route   GET /api/admin/products/types
 // @access  Private (Admin/Manager)
 exports.getProductTypes = asyncHandler(async (req, res, next) => {
-  // Remove .select() temporarily to debug - fetch everything
+  // Fetch all active products
   const products = await ProductCatalog.find({ isActive: true }).lean();
   
-  console.log(`🔥 Found ${products.length} active products`);
-  const seeds = products.find(p => p.name === "Seeds");
-  if (seeds) {
-    console.log("🔥 Server-side Seeds data:", JSON.stringify(seeds, null, 2));
-    console.log("🔥 Server-side Seeds enableNugCalculation:", seeds.enableNugCalculation);
-  }
-
-  const productTypes = products.map(product => {
-    if (product.name === "Seeds") {
-       console.log("🔥 Mapping Seeds - enableNugCalculation:", product.enableNugCalculation);
-    }
-    return {
-      id: product._id,
-      name: product.name,
-      value: product.name.toLowerCase().replace(/\s+/g, '-'),
-      allowedTransactions: product.allowedTransactions || ['sale', 'purchase'],
-      enableNugCalculation: product.enableNugCalculation === true // Ensure boolean
-    };
-  });
+  const productTypes = products.map(product => ({
+    id: product._id,
+    name: product.name,
+    value: product.name.toLowerCase().replace(/\s+/g, '-'),
+    allowedTransactions: product.allowedTransactions || ['sale', 'purchase'],
+    enableNugCalculation: product.enableNugCalculation === true
+  }));
 
   res.status(200).json({ success: true, data: productTypes });
 });
