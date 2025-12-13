@@ -28,13 +28,14 @@ router.get('/types', protect, checkPermission('read_product'), async (req, res) 
     // Ensure JSON response
     res.setHeader('Content-Type', 'application/json');
 
-    const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions');
+    const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions enableNugCalculation');
 
     const productTypes = products.map(product => ({
       id: product._id,
       name: product.name,
       value: product.name.toLowerCase().replace(/\s+/g, '-'),
-      allowedTransactions: product.allowedTransactions || ['sale', 'purchase']
+      allowedTransactions: product.allowedTransactions || ['sale', 'purchase'],
+      enableNugCalculation: product.enableNugCalculation || false
     }));
 
     return res.status(200).json({ success: true, data: productTypes });
