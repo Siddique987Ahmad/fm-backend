@@ -110,13 +110,14 @@ exports.getProductStats = asyncHandler(async (req, res, next) => {
 // @route   GET /api/admin/products/types
 // @access  Private (Admin/Manager)
 exports.getProductTypes = asyncHandler(async (req, res, next) => {
-  const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions');
+  const products = await ProductCatalog.find({ isActive: true }).select('name _id allowedTransactions enableNugCalculation');
   
   const productTypes = products.map(product => ({
     id: product._id,
     name: product.name,
     value: product.name.toLowerCase().replace(/\s+/g, '-'),
-    allowedTransactions: product.allowedTransactions || ['sale', 'purchase']
+    allowedTransactions: product.allowedTransactions || ['sale', 'purchase'],
+    enableNugCalculation: product.enableNugCalculation || false
   }));
 
   res.status(200).json({ success: true, data: productTypes });
