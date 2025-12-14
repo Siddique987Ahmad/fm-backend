@@ -413,7 +413,7 @@ router.get('/:productType/:id/invoice', protect, checkPermission('read_product')
 router.get('/:productType/clients', protect, async (req, res) => {
   try {
     const { productType } = req.params;
-    const { transactionType } = req.query;
+    const { transactionType, global } = req.query;
 
     if (!transactionType || !['sale', 'purchase'].includes(transactionType)) {
       return res.status(400).json({
@@ -422,14 +422,19 @@ router.get('/:productType/clients', protect, async (req, res) => {
       });
     }
 
+    // Build match stage
+    const matchStage = { transactionType };
+    
+    // Only filter by productType if global is NOT true
+    if (global !== 'true') {
+      matchStage.productType = productType;
+    }
+
     // Get clients with NET advance payments using aggregation
     // This accounts for both overpayments and offsetting transactions
     const clientsWithAdvances = await Product.aggregate([
       { 
-        $match: { 
-          productType,
-          transactionType
-        }
+        $match: matchStage
       },
       {
         $group: {
