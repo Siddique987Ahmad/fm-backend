@@ -120,12 +120,44 @@ router.get('/:productType/advances', protect, async (req, res) => {
       $expr: { $ne: ["$remainingAmount", "$totalBalance"] }
     };
 
-    const totalCount = await Product.countDocuments(transactionQuery);
+    // 1. Fetch ALL matching transactions sorted by Date ASC (Oldest first)
+    // We need ALL transactions to calculate the running balance correctly from the start
+    const allTransactions = await Product.find(transactionQuery).sort({ createdAt: 1 }).lean();
 
-    const paginatedTransactions = await Product.find(transactionQuery)
-      .sort({ createdAt: -1 })
-      .skip((parseInt(page) - 1) * parseInt(limit))
-      .limit(parseInt(limit));
+    // 2. Group by Client and Calculate Running Balance
+    const transactionsByClient = {};
+    allTransactions.forEach(txn => {
+      if (!transactionsByClient[txn.clientName]) {
+        transactionsByClient[txn.clientName] = [];
+      }
+      transactionsByClient[txn.clientName].push(txn);
+    });
+
+    const processedTransactions = [];
+    
+    Object.keys(transactionsByClient).forEach(client => {
+      let runningBalance = 0;
+      transactionsByClient[client].forEach(txn => {
+        const netChange = txn.remainingAmount - txn.totalBalance;
+        runningBalance += netChange;
+        
+        // Add runningBalance to the transaction object
+        txn.runningBalance = runningBalance;
+        processedTransactions.push(txn);
+      });
+    });
+
+    // 3. Sort by Date DESC (Newest first) for display
+    processedTransactions.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    // 4. Apply Pagination manually
+    const totalCount = processedTransactions.length;
+    const paginatedTransactions = processedTransactions.slice(
+      (parseInt(page) - 1) * parseInt(limit),
+      parseInt(page) * parseInt(limit)
+    );
+
+    console.log(`🔍 [Advance Payments] Found ${totalCount} individual advance transactions with running balance`);
 
     console.log(`🔍 [Advance Payments] Found ${totalCount} individual advance transactions`);
     
