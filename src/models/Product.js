@@ -28,12 +28,13 @@ const productSchema = new mongoose.Schema({
   weight: {
     type: Number,
     required: [true, 'Weight is required'],
-    min: [0.01, 'Weight must be greater than 0'],
     validate: {
       validator: function(value) {
+        // Allow 0 if totalBalance is 0 (Advance Payment)
+        if (this.totalBalance === 0) return value >= 0;
         return value > 0;
       },
-      message: 'Weight must be a positive number'
+      message: 'Weight must be a positive number for regular transactions'
     }
   },
   // Added weight unit field for clarity
@@ -46,12 +47,13 @@ const productSchema = new mongoose.Schema({
   rate: {
     type: Number,
     required: [true, 'Rate is required'],
-    min: [0.01, 'Rate must be greater than 0'],
     validate: {
       validator: function(value) {
+        // Allow 0 if totalBalance is 0 (Advance Payment)
+        if (this.totalBalance === 0) return value >= 0;
         return value > 0;
       },
-      message: 'Rate must be a positive number'
+      message: 'Rate must be a positive number for regular transactions'
     }
   },
   // Added rate unit field for clarity

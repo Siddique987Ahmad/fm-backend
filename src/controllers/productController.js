@@ -51,12 +51,23 @@ const createTransaction = async (req, res) => {
     }
 
     // Validation
-    if (!transactionType || !clientName || finalWeight === 0 || !rate || remainingAmount === undefined || totalBalance === undefined) {
-      console.log('❌ [Create Transaction] Missing required fields');
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide all required fields'
-      });
+    // For advance payments, weight and rate can be 0, but totalBalance must be 0
+    const isAdvancePayment = parseFloat(totalBalance) === 0 && parseFloat(remainingAmount) > 0;
+
+    if (!transactionType || !clientName || remainingAmount === undefined || totalBalance === undefined) {
+       console.log('❌ [Create Transaction] Missing required fields');
+       return res.status(400).json({
+         success: false,
+         message: 'Please provide all required fields'
+       });
+    }
+
+    if (!isAdvancePayment && (finalWeight === 0 || !rate)) {
+        console.log('❌ [Create Transaction] Weight and Rate required for non-advance transactions');
+        return res.status(400).json({
+          success: false,
+          message: 'Weight and Rate are required for regular transactions'
+        });
     }
 
     // Create new transaction with productType
