@@ -59,11 +59,17 @@ router.get('/:productType/advances', protect, async (req, res) => {
   try {
     console.log('🔍 [Advance Payments] Route HIT!');
     const { productType } = req.params;
-    const { transactionType, clientName, page = 1, limit = 50 } = req.query;
+    const { transactionType, clientName, page = 1, limit = 50, global } = req.query;
 
     // Build base query
     // NOTE: Do NOT exclude internal transactions here - we need them for net advance calculation
-    const baseQuery = { productType };
+    const baseQuery = {};
+    
+    // Only filter by productType if global is NOT true
+    if (global !== 'true') {
+      baseQuery.productType = productType;
+    }
+
     if (transactionType && transactionType !== 'all') {
       baseQuery.transactionType = transactionType;
     }
