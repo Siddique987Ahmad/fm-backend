@@ -498,10 +498,8 @@ router.get('/:productType/clients', protect, async (req, res) => {
     }));
 
     // Get all unique client names (including those without advances)
-    const allClients = await Product.distinct('clientName', {
-      productType,
-      transactionType
-    });
+    // Use the same matchStage to ensure consistency (global & cross-transaction)
+    const allClients = await Product.distinct('clientName', matchStage);
 
     // Sort all clients alphabetically
     allClients.sort();
