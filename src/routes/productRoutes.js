@@ -429,7 +429,9 @@ router.get('/:productType/clients', protect, async (req, res) => {
     }
 
     // Build match stage
-    const matchStage = { transactionType };
+    // We want to fetch advances across ALL transaction types (Sale & Purchase) to show net position
+    // So we do NOT filter by transactionType here for the aggregation
+    const matchStage = {};
     
     // Only filter by productType if global is NOT true
     if (global !== 'true') {
