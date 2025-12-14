@@ -110,13 +110,14 @@ router.get('/:productType/advances', protect, async (req, res) => {
     })), null, 2));
 
     // Flatten the results and apply pagination
-    // NEW LOGIC: Fetch individual transactions where remainingAmount > totalBalance
-    // This allows showing ALL advance payments, not just the latest one per client
+    // NEW LOGIC: Fetch individual transactions where remainingAmount != totalBalance
+    // This allows showing ALL advance payments (Credits) AND Pending transactions (Debits)
+    // effectively creating a LEDGER VIEW.
     
-    // Add condition for advance payments (remaining > total)
+    // Add condition for unsettled transactions (remaining != total)
     const transactionQuery = {
       ...baseQuery,
-      $expr: { $gt: ["$remainingAmount", "$totalBalance"] }
+      $expr: { $ne: ["$remainingAmount", "$totalBalance"] }
     };
 
     const totalCount = await Product.countDocuments(transactionQuery);
