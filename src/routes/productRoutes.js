@@ -80,18 +80,20 @@ router.get('/:productType/advances', protect, async (req, res) => {
     // Use aggregation to calculate NET advance per client
     // Net advance = sum of (remainingAmount - totalBalance) for all transactions
     // This accounts for both overpayments (positive) and underpayments (negative)
+    // Use aggregation to calculate NET advance per client
+    // Net advance = sum of (remainingAmount - totalBalance) for all transactions
+    // This accounts for both overpayments (positive) and underpayments (negative)
     const advanceAggregation = await Product.aggregate([
       { $match: baseQuery },
       {
         $group: {
-          _id: {
-            clientName: '$clientName',
-            transactionType: '$transactionType'
-          },
+          _id: '$clientName', // CHANGED: Group by client only to net across types
           netAdvance: {
             $sum: { $subtract: ['$remainingAmount', '$totalBalance'] }
           },
-          transactions: { $push: '$$ROOT' }
+          // Capture the transaction type to categorize the advance
+          // We'll use the type of the most recent transaction or just the first one found
+          transactionType: { $first: '$transactionType' }
         }
       },
       {
@@ -99,14 +101,12 @@ router.get('/:productType/advances', protect, async (req, res) => {
           netAdvance: { $gt: 0 } // Only show clients with positive net advance
         }
       },
-      { $sort: { '_id.clientName': 1 } }
+      { $sort: { _id: 1 } }
     ]);
 
     console.log('🔍 [Advance Payments] Aggregation results:', JSON.stringify(advanceAggregation.map(g => ({
-      client: g._id.clientName,
-      type: g._id.transactionType,
-      netAdvance: g.netAdvance,
-      transactionCount: g.transactions.length
+      client: g._id,
+      netAdvance: g.netAdvance
     })), null, 2));
 
     // Flatten the results and apply pagination
@@ -143,7 +143,8 @@ router.get('/:productType/advances', protect, async (req, res) => {
     advanceAggregation.forEach(group => {
       summary.totalOutstanding += group.netAdvance;
       
-      if (group._id.transactionType === 'sale') {
+      // Use the captured transactionType to categorize
+      if (group.transactionType === 'sale') {
         summary.totalSalesAdvances += group.netAdvance;
         summary.salesCount++;
       } else {
