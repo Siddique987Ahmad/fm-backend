@@ -110,42 +110,26 @@ router.get('/:productType/advances', protect, async (req, res) => {
     })), null, 2));
 
     // Flatten the results and apply pagination
-    const allTransactions = [];
-    advanceAggregation.forEach(group => {
-      // For each client with net advance, find their latest transaction with overpayment
-      const latestOverpayment = group.transactions
-        .filter(txn => txn.remainingAmount > txn.totalBalance)
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
-      
-      if (latestOverpayment) {
-        // Explicitly create a new object using Object.assign to avoid spread issues
-        const transactionWithNetAdvance = Object.assign({}, latestOverpayment, {
-          netAdvance: Number(group.netAdvance), // Force number
-          TEST_FLAG: true // Debug flag
-        });
-        
-        console.log(`🔍 [Advance Payments] Prepared transaction for ${group._id.clientName}:`, {
-          netAdvance: transactionWithNetAdvance.netAdvance,
-          originalRemaining: latestOverpayment.remainingAmount,
-          hasTestFlag: transactionWithNetAdvance.TEST_FLAG
-        });
+    // NEW LOGIC: Fetch individual transactions where remainingAmount > totalBalance
+    // This allows showing ALL advance payments, not just the latest one per client
+    
+    // Add condition for advance payments (remaining > total)
+    const transactionQuery = {
+      ...baseQuery,
+      $expr: { $gt: ["$remainingAmount", "$totalBalance"] }
+    };
 
-        allTransactions.push(transactionWithNetAdvance);
-      }
-    });
+    const totalCount = await Product.countDocuments(transactionQuery);
 
-    // Apply pagination
-    const totalCount = allTransactions.length;
-    const paginatedTransactions = allTransactions.slice(
-      (parseInt(page) - 1) * parseInt(limit),
-      parseInt(page) * parseInt(limit)
-    );
+    const paginatedTransactions = await Product.find(transactionQuery)
+      .sort({ createdAt: -1 })
+      .skip((parseInt(page) - 1) * parseInt(limit))
+      .limit(parseInt(limit));
 
-    console.log('🔍 [Advance Payments] Sending response:', JSON.stringify(paginatedTransactions.map(t => ({
-      client: t.clientName,
-      netAdvance: t.netAdvance,
-      remaining: t.remainingAmount
-    })), null, 2));
+    console.log(`🔍 [Advance Payments] Found ${totalCount} individual advance transactions`);
+    
+    // We don't need to manually flatten aggregation results anymore
+    // But we still use aggregation above for the SUMMARY calculation
 
     // Calculate summary
     const summary = {
