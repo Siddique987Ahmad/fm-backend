@@ -402,9 +402,19 @@ class PDFService {
 
   // Initialize browser
   async initBrowser() {
+    // Always create a fresh browser instance to avoid connection issues
+    if (this.browser) {
+      try {
+        await this.browser.close();
+        this.browser = null;
+      } catch (e) {
+        console.warn('Warning closing existing browser:', e.message);
+      }
+    }
+    
     if (!this.browser) {
       const launchOptions = {
-        headless: true,
+        headless: 'new',
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -412,8 +422,17 @@ class PDFService {
           '--disable-gpu',
           '--disable-software-rasterizer',
           '--disable-extensions',
-          '--single-process'
-        ]
+          '--disable-web-security',
+          '--disable-features=IsolateOrigins,site-per-process',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--no-zygote',
+          '--disable-accelerated-2d-canvas',
+          '--disable-blink-features=AutomationControlled'
+        ],
+        ignoreHTTPSErrors: true,
+        dumpio: false
       };
 
       // For Vercel/serverless, use Chromium binary with puppeteer-core
@@ -451,7 +470,15 @@ class PDFService {
         }
       }
 
-      this.browser = await puppeteer.launch(launchOptions);
+      try {
+        console.log('🚀 PDFService: Launching browser with options:', JSON.stringify(launchOptions, null, 2));
+        this.browser = await puppeteer.launch(launchOptions);
+        console.log('✅ PDFService: Browser launched successfully');
+      } catch (launchError) {
+        console.error('❌ PDFService: Failed to launch browser:', launchError.message);
+        console.error('❌ PDFService: Launch error stack:', launchError.stack);
+        throw new Error(`Failed to launch browser: ${launchError.message}`);
+      }
     }
     return this.browser;
   }
@@ -748,25 +775,6 @@ class PDFService {
           <div class="generation-date">Generated on ${new Date().toLocaleString('en-PK')}</div>
         </div>
         
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Total Records</div>
-            <div class="stat-value">${stats.totalRecords}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Total Amount</div>
-            <div class="stat-value">Rs.${stats.totalAmount.toLocaleString()}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Paid Amount</div>
-            <div class="stat-value">Rs.${stats.paidAmount.toLocaleString()}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Pending Amount</div>
-            <div class="stat-value">Rs.${stats.pendingAmount.toLocaleString()}</div>
-          </div>
-        </div>
-        
         <div class="section-title">Expense Details</div>
         
         <table class="data-table">
@@ -814,6 +822,28 @@ class PDFService {
             `}
           </tbody>
         </table>
+        
+        <div style="margin-top: 30px; padding: 20px; background-color: #f7fafc; border: 2px solid #2d3748; border-radius: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+            <div style="font-weight: bold; font-size: 16px; color: #2d3748;">
+              TOTAL RECORDS: ${stats.totalRecords}
+            </div>
+            <div style="display: flex; gap: 30px; flex-wrap: wrap;">
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #718096; margin-bottom: 4px;">Total Amount</div>
+                <div style="font-weight: bold; font-size: 16px; color: #2d3748;">Rs.${stats.totalAmount.toLocaleString()}</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #718096; margin-bottom: 4px;">Paid Amount</div>
+                <div style="font-weight: bold; font-size: 16px; color: #38a169;">Rs.${stats.paidAmount.toLocaleString()}</div>
+              </div>
+              <div style="text-align: center;">
+                <div style="font-size: 12px; color: #718096; margin-bottom: 4px;">Pending Amount</div>
+                <div style="font-weight: bold; font-size: 16px; color: ${stats.pendingAmount > 0 ? '#e53e3e' : '#38a169'};">Rs.${stats.pendingAmount.toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       `;
 
       return this.generatePDF(title, content);
@@ -1074,11 +1104,21 @@ class PDFService {
     try {
       console.log('📄 PDFService: Starting PDF generation...');
       browser = await this.initBrowser();
+      
+      console.log('📄 PDFService: Creating new page...');
       page = await browser.newPage();
+      console.log('📄 PDFService: Page created successfully');
 
-      // Set longer timeouts for serverless
-      await page.setDefaultNavigationTimeout(60000);
-      await page.setDefaultTimeout(60000);
+      // Set reasonable timeouts
+      await page.setDefaultNavigationTimeout(30000);
+      await page.setDefaultTimeout(30000);
+      
+      // Set viewport
+      await page.setViewport({
+        width: 1200,
+        height: 1600,
+        deviceScaleFactor: 1
+      });
 
       const html = this.getBaseTemplate(title, content);
       console.log('📄 PDFService: HTML template generated, length:', html.length);

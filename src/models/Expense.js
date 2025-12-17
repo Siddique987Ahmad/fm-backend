@@ -95,6 +95,14 @@ const expenseSchema = new mongoose.Schema({
       trim: true,
       maxLength: [200, 'Advance reason cannot exceed 200 characters']
     },
+    advanceAmount: {
+      type: Number,
+      min: [0, 'Advance amount cannot be negative']
+    },
+    remainingAmount: {
+      type: Number,
+      min: [0, 'Remaining amount cannot be negative']
+    },
 
     // Factory expenses
     factoryType: {
