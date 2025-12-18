@@ -427,6 +427,94 @@ const getEmployeesForExpense = async (req, res) => {
   }
 };
 
+// @desc    Get employee advance history
+// @route   GET /api/admin/employees/:id/advances
+// @access  Private (Admin/Manager)
+const getEmployeeAdvances = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const Expense = require('../models/Expense');
+
+    // Get employee details
+    const employee = await Employee.findById(id).select('firstName lastName employeeId salary');
+    
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        message: 'Employee not found'
+      });
+    }
+
+    // Get all labour expenses for this employee in current month where they took advance
+    const currentMonth = new Date();
+    const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+    const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+
+    // Build employee name for fallback matching
+    const employeeName = `${employee.firstName} ${employee.lastName}`;
+
+    // Query by employeeId OR employeeName (for backward compatibility with old records)
+    const advances = await Expense.find({
+      expenseCategory: 'labour',
+      $or: [
+        { 'categorySpecific.employeeId': id },
+        { 'categorySpecific.employeeName': employeeName }
+      ],
+      expenseDate: { $gte: startOfMonth, $lte: endOfMonth },
+      'categorySpecific.advanceAmount': { $exists: true, $gt: 0 }
+    }).sort({ expenseDate: -1 });
+
+    // Calculate totals - only count advances where amount > 0
+    const totalAdvances = advances.reduce((sum, exp) => {
+      const advanceAmount = exp.categorySpecific?.advanceAmount || 0;
+      const amount = typeof advanceAmount === 'number' ? advanceAmount : parseFloat(advanceAmount) || 0;
+      return amount > 0 ? sum + amount : sum;
+    }, 0);
+
+    const totalSalaryPaid = advances.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+    const remainingSalary = (employee.salary || 0) - totalAdvances;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        employee: {
+          id: employee._id,
+          name: `${employee.firstName} ${employee.lastName}`,
+          employeeId: employee.employeeId,
+          salary: employee.salary
+        },
+        advances: advances
+          .filter(adv => {
+            const advAmt = adv.categorySpecific?.advanceAmount || 0;
+            const amt = typeof advAmt === 'number' ? advAmt : parseFloat(advAmt) || 0;
+            return amt > 0;
+          })
+          .map(adv => ({
+            date: adv.expenseDate,
+            advanceAmount: adv.categorySpecific?.advanceAmount || 0,
+            totalAmount: adv.amount,
+            remainingAmount: adv.categorySpecific?.remainingAmount || 0,
+            description: adv.description || adv.categorySpecific?.advanceReason
+          })),
+        summary: {
+          totalAdvancesTaken: totalAdvances,
+          totalSalaryPaid: totalSalaryPaid,
+          remainingSalary: remainingSalary,
+          monthSalary: employee.salary || 0
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching employee advances:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server Error',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getEmployees,
   getEmployeeById,
@@ -435,5 +523,6 @@ module.exports = {
   deleteEmployee,
   toggleEmployeeStatus,
   getEmployeeStats,
-  getEmployeesForExpense
+  getEmployeesForExpense,
+  getEmployeeAdvances
 };

@@ -246,6 +246,13 @@ expenseSchema.virtual('subcategoryDisplay').get(function () {
 
 // Pre-save middleware to update payment status
 expenseSchema.pre('save', function (next) {
+  // For labour expenses, auto-calculate remainingAmount
+  if (this.expenseCategory === 'labour' && this.categorySpecific && this.categorySpecific.advanceAmount !== undefined) {
+    const totalAmount = this.amount || 0;
+    const advanceAmount = this.categorySpecific.advanceAmount || 0;
+    this.categorySpecific.remainingAmount = Math.max(0, totalAmount - advanceAmount);
+  }
+
   // Update payment status based on amount paid
   if (this.amountPaid >= this.amount) {
     this.paymentStatus = 'paid';

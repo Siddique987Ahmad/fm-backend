@@ -42,7 +42,8 @@ const {
   deleteEmployee,
   toggleEmployeeStatus,
   getEmployeeStats,
-  getEmployeesForExpense
+  getEmployeesForExpense,
+  getEmployeeAdvances
 } = require('../controllers/employeeController');
 const {
   getSalesReport,
@@ -474,6 +475,15 @@ router.get('/employees/for-expense',
   protect, 
   checkPermission('read_user'),
   getEmployeesForExpense
+);
+
+// @route   GET /api/admin/employees/:id/advances
+// @desc    Get employee advance history
+// @access  Private (Admin/Manager)
+router.get('/employees/:id/advances', 
+  protect, 
+  checkPermission('read_user'),
+  getEmployeeAdvances
 );
 
 // @route   GET /api/admin/employees/:id

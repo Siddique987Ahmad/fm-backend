@@ -273,7 +273,7 @@ employeeSchema.statics.getEmployeeStats = async function() {
 // Static method to get employees for expense creation
 employeeSchema.statics.getEmployeesForExpense = async function() {
   return this.find({ isActive: true })
-    .select('employeeId firstName lastName department position employeeType')
+    .select('employeeId firstName lastName department position employeeType salary salaryType')
     .sort({ firstName: 1, lastName: 1 });
 };
 

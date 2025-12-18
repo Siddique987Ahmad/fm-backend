@@ -41,7 +41,7 @@ const createTransaction = async (req, res) => {
     if (useNugCalculation && nugEntries && nugEntries.length > 0) {
       // Calculate net weight for each entry and sum them up
       totalNetWeight = nugEntries.reduce((sum, entry) => {
-        return sum + (entry.netWeight || 0);
+        return sum + (entry.totalWeight || entry.netWeight || 0);
       }, 0);
       
       // Use total net weight as the transaction weight
