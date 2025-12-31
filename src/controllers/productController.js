@@ -19,7 +19,8 @@ const createTransaction = async (req, res) => {
       notes,
       isInternalTransaction, // Extract this field
       useNugCalculation, // New: Nug calculation flag
-      nugEntries // New: Array of Nug entries
+      nugEntries, // New: Array of Nug entries
+      transactionDate // optional custom date from client (YYYY-MM-DD)
     } = req.body;
 
     console.log(`🔍 [Create Transaction] Request for ${productType}:`, {
@@ -87,6 +88,15 @@ const createTransaction = async (req, res) => {
       totalNetWeight: useNugCalculation ? totalNetWeight : 0,
       notes
     });
+
+    // If caller provided a transactionDate, apply it to createdAt/updatedAt
+    if (transactionDate) {
+      const d = new Date(transactionDate);
+      if (!isNaN(d.getTime())) {
+        transaction.createdAt = d;
+        transaction.updatedAt = d;
+      }
+    }
 
     const savedTransaction = await transaction.save();
 
